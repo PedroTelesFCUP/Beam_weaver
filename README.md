@@ -244,7 +244,7 @@ Copy the required CSV, NPZ, PKL, and PTH files into the repository root, or edit
 ### 3. Run Beam Weaver
 
 ```bash
-python Rad_sac_24_maio_fixed.py
+python Beam_weaver.py
 ```
 
 The script is interactive and can be used to:
@@ -316,16 +316,15 @@ University of Porto
 
 ## References and acknowledgment
 
-Beam Weaver was developed as an independent Python research implementation, but the in-built Monte Carlo simulator and the surrounding transport logic were developed with substantial reference to the literature and, in particular, to **PENELOPE**. That influence should be acknowledged explicitly in any academic or public presentation of this repository.
+Beam Weaver was developed as an independent Python research implementation, but the in-built Monte Carlo simulator and the surrounding transport logic were developed with substantial reference to the literature and, in particular, to **PENELOPE**. 
 
-In particular, the project should clearly acknowledge that the Monte Carlo side of Beam Weaver was developed with significant conceptual and practical guidance from:
+In particular, the project clearly acknowledges that the Monte Carlo side of Beam Weaver was developed with significant conceptual and practical guidance from:
 
 1. **Francesc Salvat.** *PENELOPE-2018: A Code System for Monte Carlo Simulation of Electron and Photon Transport.* OECD Nuclear Energy Agency, NEA/MBDAV/R(2019)1, 2019.
 2. **Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine.** *Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor.* ICML, 2018.
 3. **Antonin Raffin et al.** *Stable-Baselines3: Reliable Reinforcement Learning Implementations.* Journal of Machine Learning Research, 22:1–8, 2021.
 
 
-Beam Weaver does **not** distribute the official PENELOPE source code unless a user adds it separately under its own terms. However, the debt to PENELOPE as a scientific and methodological reference is real and should be stated explicitly.
 
 ## Citation
 
