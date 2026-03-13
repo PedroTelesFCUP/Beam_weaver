@@ -23,66 +23,72 @@ bibliography: paper.bib
 
 # Summary
 
-Beam Weaver is an open-source Python research framework for learning event-by-event
-photon transport in a homogeneous water phantom with a modified n-step Soft-Actor-Critic agent.
-The software combines a custom Monte Carlo (MC) reference simulator, a
-physics-informed environment for reinforcement learning, and a hybrid
-Soft Actor-Critic (SAC) policy that predicts both a discrete interaction class
-and continuous transport quantities such as free path, scattering geometry, and
-secondary-particle properties. In contrast to standard SAC implementations
-[@haarnoja2018sac], Beam Weaver uses an n-step training workflow
-[@suttonbarto2018] to propagate transport information across short event
-sequences that are physically meaningful for photon histories. The current
-release focuses on the four dominant photon interactions implemented in the
-codebase---Rayleigh scattering, Compton scattering, photoelectric absorption,
-and pair production---together with simplified secondary-electron transport for
-depth-dose estimation.
+Beam Weaver is an open-source Python research framework for learning
+event-by-event photon transport in a homogeneous water phantom with a
+physics-informed hybrid Soft Actor-Critic (SAC) agent. The software
+combines three tightly coupled components: an internal Monte Carlo (MC)
+reference simulator, a reinforcement-learning environment that exposes
+transport as a structured sequential decision problem, and a custom
+multi-head SAC implementation that predicts both a discrete interaction
+type and continuous transport quantities such as free path, scattering
+geometry, and secondary-particle properties.
 
-Beam Weaver is a proof-of-concept, a transparent experimental platform for studying
-whether modern reinforcement-learning methods can emulate stochastic
-radiation transport while preserving physically interpretable behaviour. The
-software is released in a substantially working but still evolving state: core
-interaction simulation is already operational in the target water-phantom
-setting, while angular fine tuning remains the main unfinished component.
-Releasing Beam Weaver now makes its unusual problem setting, data flow, and
-evaluation workflow available to the community, with the explicit goal of
-supporting scrutiny, reuse, and future collaboration. The public software
-archive for the release described here is available at [@beamweaver_software].
+In contrast to standard SAC implementations [@haarnoja2018sac], Beam
+Weaver uses an n-step replay and training workflow [@suttonbarto2018] to
+propagate information across short transport sequences that are
+physically meaningful for photon histories. The current release models
+the four dominant photon interaction cross sections ---
+Rayleigh scattering, Compton scattering, photoelectric
+absorption, and pair production---together with optional simplified
+condensed-history secondary-electron transport for depth-dose
+estimation. Alternatively it deposits the energy locally without electron transport.
+
+Beam Weaver is released as a transparent research platform for studying
+whether reinforcement learning can reproduce the stochastic event
+structure of radiation transport while retaining physically interpretable
+behavior. The software is already functional in its target
+water-phantom setting, although it remains a work in progress: core
+interaction simulation is operational, while angular fine tuning remains
+the main unfinished component. Releasing Beam Weaver in its current form
+makes its unusual architecture, training workflow, and evaluation
+pipeline available to the community for scrutiny, reuse, and eventual
+collaboration. The public software archive for the release described
+here is available at [@beamweaver_software].
 
 # Statement of need
 
-High-fidelity radiation transport is usually performed with mature Monte Carlo
-codes such as PENELOPE, Geant4, EGSnrc, and MCNP-class toolchains
-[@penelope2018; @agostinelli2003geant4; @kawrakow2000egsnrc]. These codes are
-the standard for accuracy and remain indispensable for dosimetry, algorithm
-benchmarking, and method development, but their computational cost can limit
-rapid experimentation and make repeated transport evaluations expensive. At the
-same time, reinforcement-learning libraries such as Stable-Baselines3 provide
-robust implementations of algorithms like SAC, but they do not provide
-radiation-physics environments, transport samplers, or validation workflows
-tailored to stochastic particle transport [@raffin2021stable].
+High-fidelity radiation transport is typically performed with mature
+Monte Carlo codes such as PENELOPE, Geant4, EGSnrc, and related
+toolchains [@penelope2018; @agostinelli2003geant4; @kawrakow2000egsnrc].
+These remain the standard for validated transport and dosimetric
+accuracy, but their computational cost can limit rapid experimentation
+and repeated evaluation in algorithm-development settings. At the same
+time, reinforcement-learning libraries such as Stable-Baselines3 provide
+robust algorithmic infrastructure, but they do not include
+radiation-physics environments, transport samplers, or validation
+workflows tailored to stochastic photon transport [@raffin2021stable].
 
-Beam Weaver was developed to address this gap. Its target audience is
-researchers in medical physics leaning strongly towards computation, computational radiation transport, and
-scientific machine learning who want an open platform for testing learned
-transport surrogates at the event level. Instead of learning a final dose map
-directly, Beam Weaver models the transport process itself, taking advantage of t
-he fact that the Monte Carlo simulation itself produces billions of events that can 
-be used as reinforcement learning observables, and function as ground-truth in supervised learning ecosystems. 
-The agent observes photon state variables and material-dependent quantities, 
-then predicts the next interaction class together with continuous outcomes that can 
-be compared against MC-generated references. 
+Beam Weaver was developed to address this gap. It is intended for
+researchers in medical physics, computational radiation transport, and
+scientific machine learning who want an open platform for investigating
+learned transport surrogates at the event level. Rather than learning a
+final dose map directly, Beam Weaver models the transport process itself:
+the agent observes photon state variables and cross-section-derived
+quantities, then predicts the next interaction class together with
+continuous outcomes that can be compared against MC-generated reference
+behavior.
 
-The release described here is also motivated by reproducibility and community
-visibility. The repository bundles the workflow needed to generate MC-derived
-supervision targets, pretrain a physics head, train the hybrid SAC policy, save
-checkpoints, and compare learned trajectories and depth-dose behaviour against
-MC references. Beam Weaver is therefore not just a model checkpoint; it is an
-inspectable research pipeline for learned transport. Making that pipeline public
-at this stage is valuable even though the project remains a work in progress,
-because the software already demonstrates a distinctive and non-standard
-combination of radiation transport, structured RL actions, physics-guided
-pretraining, and n-step SAC training.
+The release described here is also motivated by reproducibility and
+community visibility. Beam Weaver bundles the workflow needed to
+generate MC-derived supervision targets, pretrain a physics branch,
+train the hybrid SAC policy, save checkpoints, and compare learned
+transport behavior against MC references through interaction
+statistics, secondaries, tracks, and depth-dose curves. It is therefore
+not merely a model checkpoint, but an inspectable research pipeline for
+learned transport. Making that pipeline public at this stage is valuable
+even though the project remains unfinished, because the software already
+demonstrates a distinctive combination of structured RL actions,
+physics-guided supervision, curriculum training, and n-step SAC updates.
 
 # State of the field
 
@@ -92,8 +98,8 @@ materials, geometries, and interaction models [@penelope2018;
 @agostinelli2003geant4; @kawrakow2000egsnrc]. They are the appropriate tools
 when the goal is production simulation or validated reference calculation. Beam
 Weaver does not compete with them on scope, maturity, or clinical readiness.
-Instead, it uses a deliberately narrower setting---monoenergetic 10x10 cm^2 photon beam
-transport in a 100x100x100 cm^3 box of water---to study whether a SAC agent can learn
+Instead, it uses a deliberately narrower setting---$10 \times 10$ cm$^2$ photon beam transport in a
+$100 \times 100 \times 100$ cm$^3$---to study whether a SAC agent can learn
 the event-level structure of radiation transport from a physics-based simulator.
 
 General-purpose reinforcement-learning frameworks likewise address a different
@@ -120,43 +126,81 @@ reference transport process by process.
 
 # Software design
 
-Beam Weaver is organized around three main components. The first is a
-PENELOPE-derived MC reference simulator written in Python. The simulator uses
-cross-section tables derived from the PENELOPE material-data workflow
-[@penelope2018] and samples the same four photon interaction channels used by
-the reinforcement-learning environment, using heavily inspired algorithms from PENELOPE
-and GEANT4 (if the user choses to explicitly simulate the secondary particles with a condensed history model). 
-[@penelope2018; @agostinelli2003geant4]. Beam Weaver does not claim to reproduce
-the full scope or validation status of either code system; rather, it adapts
-selected ideas from those toolkits into a compact research prototype that makes
-the learned-transport problem tractable and inspectable.
+Beam Weaver is organized around three tightly coupled components. The
+first is a compact MC reference simulator written in Python. The
+simulator uses cross-section tables derived from the PENELOPE
+material-data files [@penelope2018] and samples the four photon
+interactions which are used by the reinforcement-learning environment:
+Rayleigh scattering, Compton scattering, photoelectric absorption, and
+pair production. For secondary charged-particle handling, the present
+implementation also draws methodological inspiration from both
+PENELOPE and Geant4 condensed-history ideas
+[@penelope2018; @agostinelli2003geant4], but provides the user with a simpler local energy deposition approach as well. 
 
-The second component is the environment that wraps the transport process as a
-reinforcement-learning problem. Observations encode photon energy, position,
-direction, and cross-section-derived quantities. Actions are hybrid: the policy
-selects one of the discrete interaction types and predicts continuous transport
-outputs such as free path, scattering angles, or secondary-particle parameters.
-The environment is paired with curriculum-style phase scheduling so that early
-training focuses on interaction-type learning before later phases emphasise
-continuous transport outputs, consistency constraints, and richer trajectory
-statistics.
+The second component is a reinforcement-learning environment that casts
+transport as a structured sequential decision problem. Observations
+encode photon energy, position, direction, and cross-section-derived
+quantities. Actions are hybrid: the agent selects one of the discrete
+interaction classes and predicts continuous transport outputs such as
+free path, scattering geometry, and secondary-particle parameters. The
+environment also exposes transport-specific diagnostics and rewards,
+including energy-binned interaction statistics, angular-distribution
+comparisons, secondary summaries, and percentage-depth-dose behavior.
+These diagnostics are important because Beam Weaver is intended not only
+to optimize a scalar score, but to compare learned and reference
+transport process by process.
 
-The third component is a custom SAC implementation and associated training
-workflow. Beam Weaver extends Stable-Baselines3 with an n-step replay buffer, a
-hybrid actor-critic policy architecture, and a pretrained physics head. This
-makes the learning procedure materially different from off-the-shelf SAC
-[@haarnoja2018sac]. The n-step return is particularly useful in Beam Weaver
-because transport decisions often have immediate local consequences but also
-affect short downstream event chains, for example through Compton showers finishing typically with a photoelectric interaction. 
-The structured action space and physics head likewise narrow the search space while still allowing the policy to
-learn stochastic transport behaviour from experience rather than from hard-coded
-rules alone.
+The third component is a custom SAC training stack built on
+Stable-Baselines3 [@raffin2021stable]. Beam Weaver extends the standard
+SAC workflow with a hybrid actor-critic architecture, n-step replay with bootstrapping, a
+physics-pretraining stage, and curriculum-style phase scheduling. The
+policy is multi-head: a shared encoder feeds (i) a discrete SAC head for
+interaction selection, (ii) continuous heads for interaction-conditional
+transport variables, and (iii) a physics branch composed of auxiliary
+heads for quantities such as free path, outgoing energy, angular
+variables, interaction type, and secondary multiplicity. This design
+makes the implementation materially different from off-the-shelf SAC
+[@haarnoja2018sac].
 
-The public release also includes utilities for interaction frequencies,
-secondary-particle summaries, trajectory inspection, and percentage-depth-dose
-(PDD) comparison. These tools matter because Beam Weaver is intended to support
-methodological studies of learned transport, where diagnostics beyond a single
-scalar score are essential for judging physical plausibility.
+Training proceeds in stages. First, the code generates MC-derived
+supervision targets and pretrains the physics branch using supervised
+losses on physically meaningful quantities. In the current public
+workflow, this pretrained branch is then loaded as an informed
+initialization and initially frozen to stabilize the subsequent
+reinforcement-learning stages. The early SAC curriculum focuses on the
+discrete interaction head, which is trained to reproduce the correct
+interaction mixture through energy-binned histogram similarity against
+reference MC behavior. During this stage, teacher-forced supervision is
+used and then progressively worn off, providing a curriculum from
+strongly supervised interaction selection toward autonomous policy
+learning.
+
+After the discrete interaction policy has been shaped, the training
+schedule shifts toward the continuous transport heads. These heads are
+trained in an analogous staged manner, again with teacher-forced
+guidance that is gradually removed, but now targeting free path, energy
+transfer, angular behavior, and secondary-particle outputs. The actor
+objective remains physics-regularized during RL optimization through
+auxiliary supervised losses, so Beam Weaver is better understood as a
+physics-informed hybrid SAC framework than as a purely reward-driven SAC
+baseline.
+
+A further distinction from standard SAC is explicit entropy management
+across curriculum phases together with the use of n-step bootstrapped
+targets [@suttonbarto2018]. The entropy coefficient is controlled so that
+exploration remains appropriate as the task shifts between discrete and
+continuous transport learning, while the n-step return improves reward
+propagation across short but physically meaningful transport histories.
+This combination is particularly useful in stochastic transport, where a
+local interaction choice can influence several downstream event
+consequences rather than only an immediate scalar reward.
+
+The public release also includes utilities for checkpointing,
+interaction-frequency analysis, secondary-particle summaries,
+trajectory inspection, and percentage-depth-dose comparison against MC
+references. Beam Weaver is therefore not just a trained policy, but a
+complete experimental workflow for studying learned transport in a
+transparent and reproducible way.
 
 # Research impact statement
 
