@@ -1,6 +1,7 @@
 # Beam Weaver
 
-Archived release DOI: 10.5281/zenodo.18994135
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18994135.svg)](https://doi.org/10.5281/zenodo.18994135) 
+
 
 **Physics-informed reinforcement learning for stochastic photon transport in water**
 
