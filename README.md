@@ -44,6 +44,15 @@ Beam Weaver's central purpose of the project was largely achieved: the code can 
 
 In other words, this project is a working research prototype with a specific remaining refinement target.
 
+### N-step bootstrapping (non-standard SAC extension)
+Beam Weaver does **not** use a strictly vanilla 1-step SAC update. Instead, the current implementation uses an **n-step return** in the critic target through a custom replay-buffer pathway.
+
+This matters because n-step bootstrapping can propagate delayed reward information more quickly than a purely 1-step target, while still retaining a bootstrap term instead of waiting for a full Monte Carlo return. In practice, this gives a useful bias-variance compromise: compared with 1-step updates, multi-step targets can improve credit assignment and sample efficiency; compared with very long returns, they can remain more stable and practical for off-policy learning.
+
+In Beam Weaver, this choice was motivated by the long-horizon, sequential nature of event-by-event transport. A photon history is not a single isolated action but a chain of physically coupled interaction decisions (like Compton showers), so a multi-step target can help the critic connect local decisions to downstream transport consequences more effectively than a purely 1-step backup.
+
+Readers should therefore understand Beam Weaver as a **hybrid SAC variant with n-step bootstrapping**, rather than as a direct drop-in implementation of the original SAC algorithm.
+
 ## Scientific scope
 
 The current implementation studies photon transport in a **homogeneous water phantom** and packages a single main research script, `Beam_weaver.py`, which contains:
