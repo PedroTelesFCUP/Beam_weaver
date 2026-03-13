@@ -7,7 +7,7 @@
 
 > Beam Weaver is a research software prototype for learning event-by-event photon transport in a homogeneous water phantom. It combines a custom Monte Carlo reference simulator, a physics-informed reinforcement learning environment, and evaluation tools that compare learned particle histories against conventional transport outputs such as interaction statistics, secondary production, particle tracks, and percentage depth dose (PDD).
 
-**Status:** research prototype / paused snapshot  
+**Status:** research prototype  
 **DOI:** pending first Zenodo release  
 **License:** Apache-2.0  
 **Primary domain:** radiation transport and AI research
@@ -20,9 +20,9 @@
 
 Beam Weaver is released **for research purposes only**.
 
-No part of this repository should be used for clinical, industrial, regulatory, commercial, or other safety-critical purposes. This applies to **all** components of the project, including the reinforcement-learning models, evaluation scripts, generated outputs, and the **in-built Monte Carlo simulator**.
-
 The code is provided as a research prototype for method development, inspection, reproducibility, and academic discussion. It must not be represented as validated for real-world decision-making outside research settings.
+
+No part of this repository should be used for clinical, industrial, regulatory, commercial, or other safety-critical purposes. This applies to **all** components of the project, including the reinforcement-learning models, evaluation scripts, generated outputs, and the **in-built Monte Carlo simulator**.
 
 ## What Beam Weaver does
 
