@@ -12,7 +12,7 @@ authors:
 version: 0.1.0
 doi: 10.5281/zenodo.18994135
 license: Apache-2.0
-repository-code: "https://github.com/YOUR-ACCOUNT/beam-weaver"
+repository-code: "https://github.com/PedroTelesFCUP/beam-weaver"
 abstract: >
   Research software implementing a custom hybrid Soft Actor–Critic agent,
   a Monte Carlo reference simulator, and evaluation utilities for photon
