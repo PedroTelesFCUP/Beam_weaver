@@ -18,11 +18,9 @@
 
 ## Research-use notice
 
-Beam Weaver is released **for research purposes only**.
-
-The code is provided as a research prototype for method development, inspection, reproducibility, and academic discussion. It must not be represented as validated for real-world decision-making outside research settings.
-
-No part of this repository should be used for clinical, industrial, regulatory, commercial, or other safety-critical purposes. This applies to **all** components of the project, including the reinforcement-learning models, evaluation scripts, generated outputs, and the **in-built Monte Carlo simulator**.
+Beam Weaver is released as open-source research software under the Apache-2.0 license.
+It is currently intended for research and development purposes only and is not validated
+for clinical, safety-critical, or production use.
 
 ## What Beam Weaver does
 
