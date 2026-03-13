@@ -108,12 +108,12 @@ This release currently centers on one large Python script plus metadata and pack
 - `data/README.md` — notes on expected input data
 
 
-## INPUT DATA, BINNING, AND GENERATED ARTIFACTS
+## Input data, binning, and generated artifacts
 
 Beam Weaver uses a small set of physics tables and runtime artifacts.
 These should not all be treated in the same way.
 
-## Core transport input files
+### Core transport input files
 
 The current implementation relies primarily on two photon cross-section
 tables:
@@ -161,7 +161,7 @@ The following files are also used by the present code.
 
 
 
-# generated running artifacts during pretraining with physics head
+### generated running artifacts during pretraining with physics head
 
 The following files are not primary physics input tables. They are
 generated during pretraining.
@@ -173,7 +173,7 @@ generated during pretraining.
   Saved checkpoint for the pretrained physics head.
   
 
-## generated running artifacts during training 
+### generated running artifacts during training 
 
 
 - hybrid_sac_model.zip
@@ -183,7 +183,7 @@ generated during pretraining.
   Replay-buffer state used to train the model.
 
 
-## Legacy/deprecated file not in use
+### Legacy/deprecated file not in use
 
 
 - NIST_WaterCrossSections.csv
@@ -201,7 +201,7 @@ generated during pretraining.
   future versions of Beam Weaver.
 
 
-## Notes on binning and consistency
+### Notes on binning and consistency
 
 
 The two main transport files do not need to use identical row-by-row
