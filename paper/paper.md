@@ -198,6 +198,10 @@ generation. The human authors reviewed, corrected, and validated all text,
 software descriptions, and scholarly claims, and they remain fully responsible
 for the final submission.
 
+Generative AI was used to help build the python code. 
+We used ChatGPT model GPT-4o, and Claude Sonnet 4.5 to review code and propose solutions. 
+All code was humanly validated.
+
 # Acknowledgements
 
 Beam Weaver builds on the broader open scientific software ecosystem, including
