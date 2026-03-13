@@ -1,5 +1,7 @@
 # Beam Weaver
 
+DOI: 10.5281/zenodo.18994135
+
 **Physics-informed reinforcement learning for stochastic photon transport in water**
 
 > Beam Weaver is a research software prototype for learning event-by-event photon transport in a homogeneous water phantom. It combines a custom Monte Carlo reference simulator, a physics-informed reinforcement learning environment, and evaluation tools that compare learned particle histories against conventional transport outputs such as interaction statistics, secondary production, particle tracks, and percentage depth dose (PDD).
