@@ -252,5 +252,8 @@ Beam Weaver builds on the broader open scientific software ecosystem, including
 PENELOPE for photon and electron transport methodology [@penelope2018], Geant4
 for transport-system design inspiration [@agostinelli2003geant4], and
 Stable-Baselines3 for reinforcement-learning infrastructure [@raffin2021stable].
+Beam Weaver also draws on the reinforcement-learning literature on
+multi-step bootstrapping and entropy-regularized policy optimization
+[@suttonbarto2018; @haarnoja2018sac].
 
 # References
