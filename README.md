@@ -228,6 +228,8 @@ The script also writes runtime artifacts such as checkpoints, TensorBoard logs, 
 
 ## Quick start
 
+We strongly recommend running this software on a GPU available architecture.
+
 ### 1. Create an environment
 
 Using Conda:
