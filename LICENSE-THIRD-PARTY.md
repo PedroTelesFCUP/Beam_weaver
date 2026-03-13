@@ -15,19 +15,6 @@ It does **not** automatically relicense:
 ### Dependencies
 Typical runtime dependencies such as PyTorch, Gymnasium, NumPy, pandas, Matplotlib, IPython, and Stable-Baselines3 remain under their own licenses.
 
-### Data files
-Files such as:
-
-- `NIST_WaterCrossSections.csv`
-- `OxygenPhotoShells.csv`
-- `ElectronStoppingPower.csv`
-- `Final_cross_sections.csv`
-- `Rayleigh_cross_sections.csv`
-
-should only be redistributed if you are sure you have the right to do so, and with their original attribution / terms intact.
-
-### PENELOPE-related materials
-If you compare against PENELOPE or consult the PENELOPE manual, do not imply that this repository contains official PENELOPE source code unless it actually does and you have the right to redistribute it.
 
 ### Publications
 Manuscripts, figures, and supplementary materials may carry separate copyright or publisher terms.
