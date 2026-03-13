@@ -43,7 +43,7 @@ In other words, this project is a working research prototype with a specific rem
 
 ## Scientific scope
 
-The current implementation studies photon transport in a **homogeneous water phantom** and packages a single main research script, `Rad_sac_24_maio_fixed.py`, which contains:
+The current implementation studies photon transport in a **homogeneous water phantom** and packages a single main research script, `Beam_weaver.py`, which contains:
 
 - a custom Monte Carlo-style photon transport simulator in water
 - a custom `WaterPhotonHybridEnvPenelope` environment
@@ -89,7 +89,7 @@ Its purpose is research: to investigate whether a physics-informed RL agent can 
 
 This release currently centers on one large Python script plus metadata and packaging files:
 
-- `Beam_weaver_0.1.0.py` — main research code
+- `Beam_weaver.py` — main research code
 - `README.md` — project overview and usage notes
 - `LICENSE` — software license
 - `LICENSE-THIRD-PARTY.md` — third-party boundaries and attribution notes
