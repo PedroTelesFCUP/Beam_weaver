@@ -3,9 +3,9 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18994135.svg)](https://doi.org/10.5281/zenodo.18994135)
 
 
-**Physics-informed reinforcement learning for stochastic photon transport in water**
+**Physics-informed n-step reinforcement learning for stochastic photon transport in water**
 
-> Beam Weaver is a research software prototype for learning event-by-event photon transport in a homogeneous water phantom. It combines a custom Monte Carlo reference simulator, a physics-informed reinforcement learning environment, and evaluation tools that compare learned particle histories against conventional transport outputs such as interaction statistics, secondary production, particle tracks, and percentage depth dose (PDD).
+> Beam Weaver is a research software prototype for learning event-by-event photon transport in a homogeneous water phantom. It combines a custom Monte Carlo reference simulator, a physics-informed pretrainable, unconventional n-step Soft-Actor-Critic (discrete and continuous) reinforcement learning environment, and evaluation tools that compare learned particle histories against conventional transport outputs such as interaction statistics, secondary production, particle tracks, and percentage depth dose (PDD).
 
 **Status:** research prototype  
 **DOI:** pending first Zenodo release  
@@ -50,7 +50,7 @@ The current implementation studies photon transport in a **homogeneous water pha
 
 - a custom Monte Carlo-style photon transport simulator in water
 - a custom `WaterPhotonHybridEnvPenelope` environment
-- a hybrid SAC actor-critic implementation for mixed discrete/continuous prediction
+- a hybrid n-step SAC actor-critic implementation for mixed discrete/continuous prediction
 - curriculum-based training logic with phase switching
 - physics-head pretraining on Monte Carlo-generated targets
 - evaluation utilities for comparing Monte Carlo and agent-generated showers
