@@ -1,0 +1,15 @@
+name: rad-sac-agent
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy>=1.24
+  - pandas>=2.0
+  - matplotlib>=3.7
+  - ipython>=8
+  - pytorch>=2.1
+  - tensorboard>=2.14
+  - gymnasium>=0.29,<1.1
+  - stable-baselines3>=2.1,<3
+  - pip

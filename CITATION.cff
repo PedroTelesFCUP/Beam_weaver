@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the archived Zenodo release."
+title: "Rad-SAC Agent: Soft Actor–Critic for Photon Transport in Water"
+type: software
+version: 0.1.0
+license: "Apache-2.0"
+authors:
+  - family-names: "Teles"
+    given-names: "Pedro"
+keywords:
+  - radiation transport
+  - reinforcement learning
+  - soft actor-critic
+  - monte carlo simulation
+  - medical physics
+  - photon transport
+abstract: >
+  Research software implementing a custom hybrid Soft Actor–Critic agent,
+  a Monte Carlo reference simulator, and evaluation utilities for photon
+  transport in water. The code models Rayleigh scattering, Compton scattering,
+  photoelectric absorption, and pair production in a homogeneous water phantom.
