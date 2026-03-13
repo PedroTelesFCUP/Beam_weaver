@@ -1,19 +1,18 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the archived Zenodo release."
-title: "Rad-SAC Agent: Soft Actor–Critic for Photon Transport in Water"
+title: Beam Weaver
+message: "If you use Beam Weaver, please cite the software record below."
 type: software
-version: 0.1.0
-license: "Apache-2.0"
 authors:
-  - family-names: "Teles"
-    given-names: "Pedro"
-keywords:
-  - radiation transport
-  - reinforcement learning
-  - soft actor-critic
-  - monte carlo simulation
-  - medical physics
-  - photon transport
+  - family-names: Teles
+    given-names: Pedro
+    affiliation: "Department of Physics and Astronomy, Faculty of Sciences, University of Porto"
+  - family-names: Melo
+    given-names: João
+    affiliation: "Department of Physics and Astronomy, Faculty of Sciences, University of Porto"
+version: 0.1.0
+doi: 10.5281/zenodo.18994135
+license: Apache-2.0
+repository-code: "https://github.com/YOUR-ACCOUNT/beam-weaver"
 abstract: >
   Research software implementing a custom hybrid Soft Actor–Critic agent,
   a Monte Carlo reference simulator, and evaluation utilities for photon
