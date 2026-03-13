@@ -104,9 +104,7 @@ This release currently centers on one large Python script plus metadata and pack
 Beam Weaver uses a small set of physics tables and runtime artifacts.
 These should not all be treated in the same way.
 
-========================================================================
-CORE TRANSPORT INPUT FILES
-========================================================================
+## Core transport input files
 
 The current implementation relies primarily on two photon cross-section
 tables:
