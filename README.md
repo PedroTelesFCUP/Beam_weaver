@@ -164,7 +164,7 @@ This matches the current implementation, which computes the full momentum
 transfer and then converts it to the table variable internally through
 `x_table = q / 2`.
 
-Note that the coherent form Factor is built from the IAEA polynomial interpolation.
+Note that the coherent form Factor is built from a Cromer-Mann style interpolation.
 
 
 The following files are also used by the present code.
