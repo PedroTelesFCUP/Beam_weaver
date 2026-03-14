@@ -352,6 +352,7 @@ In particular, the project clearly acknowledges that the Monte Carlo side of Bea
 1. **Francesc Salvat.** *PENELOPE-2018: A Code System for Monte Carlo Simulation of Electron and Photon Transport.* OECD Nuclear Energy Agency, NEA/MBDAV/R(2019)1, 2019.
 2. **Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine.** *Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor.* ICML, 2018.
 3. **Antonin Raffin et al.** *Stable-Baselines3: Reliable Reinforcement Learning Implementations.* Journal of Machine Learning Research, 22:1–8, 2021.
+4. **J. H. Hubbell et al.?** *Atomic Form Factors, Incoherent Scattering Functions, and Photon Scattering Cross Sections*. Journal of Physical and Chemical Reference Data, 4(3), 471--538. 1975. https://doi.org/10.1063/1.555523
 
 
 
