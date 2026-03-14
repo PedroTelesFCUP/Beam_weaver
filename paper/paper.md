@@ -202,6 +202,44 @@ references. Beam Weaver is therefore not just a trained policy, but a
 complete experimental workflow for studying learned transport in a
 transparent and reproducible way.
 
+Beam weaver uses the PENELOPE cross-sections for Photoelectric and Compton and pair-production (stored in `Final_cross_sections.csv`). The energy binning of these tables becomes the in-built energy grid for training and learning.
+Rayleigh scattering is also taken from the PENELOPE tables (stored in `Rayleigh_cross_sections.csv`), the binning is different, reflecting the way the table appears in PENELOPE. The binning is however mapped to the binning of the other cross-sections'file.
+
+For the incoherent scattering function $S(q)$, Beam weaver uses
+Hubbell-style Waller--Hartree tabulations for hydrogen and oxygen
+[@hubbell1975]. The water table used by Beam Weaver is constructed through the
+independent-atom stoichiometric sum
+
+$S_{\mathrm{H_2O}}(x)=2S_{\mathrm H}(x)+S_{\mathrm O}(x)$,
+
+where 
+
+$x=\sin(\theta/2)/\lambda$. 
+
+For compatibility with the current code,
+this quantity is stored in `water_sq.csv` under the legacy column name `q`,
+while the sampler internally converts the full momentum transfer to the
+Hubbell table variable before interpolation.
+
+For the coherent form factor $F(q)$, Beam Weaver uses the IAEA compact three-term
+Gaussian approximation for water,
+
+$F(q)=\sum_{i=1}^{3} a_i \exp\!\left[-b_i\left(\frac{q}{4\pi}\right)^2\right],$
+
+with $a=\{0.4899,\,0.2626,\,0.2254\}$ and
+$b=\{1.4752,\,4.1567,\,15.8047\}$. Rayleigh angles are then accepted with a
+weight proportional to
+
+
+$\frac{F(q)^2}{F(0)^2}\,\frac{1+\cos^2\theta}{2},$
+
+i.e. a Thomson-like angular factor modulated by the coherent form factor.
+In the current public release, these coefficients are implemented directly
+in the code as a compact water-specific fit rather than loaded from a
+tabulated molecular form-factor database.
+
+
+
 # Research impact statement
 
 Beam Weaver's immediate impact is as an openly archived, reproducible baseline
@@ -233,35 +271,6 @@ development collaboration, rather than a claim that the project is finished. The
 Zenodo archive and public repository further make the software citable,
 inspectable, and reusable in methodological work [@beamweaver_software].
 
-Beam weaver uses the PENELOPE cross-sections for Photoelectric and Compton and pair-production (stored in `Final_cross_sections.csv`). The energy binning of these tables becomes the in-built energy grid for training and learning.
-Rayleigh scattering is also taken from the PENELOPE tables (stored in `Rayleigh_cross_sections.csv`), the binning is different, reflecting the way the table appears in PENELOPE. The binning is however mapped to the binning of the other cross-sections'file.
-
-For the incoherent scattering function $S(q)$, Beam weaver uses
-Hubbell-style Waller--Hartree tabulations for hydrogen and oxygen
-[@hubbell1975]. The water table used by Beam Weaver is constructed through the
-independent-atom stoichiometric sum
-$S_{\mathrm{H_2O}}(x)=2S_{\mathrm H}(x)+S_{\mathrm O}(x)$,
-where $x=\sin(\theta/2)/\lambda$. 
-For compatibility with the current code,
-this quantity is stored in `water_sq.csv` under the legacy column name `q`,
-while the sampler internally converts the full momentum transfer to the
-Hubbell table variable before interpolation.
-
-For the coherent form factor $F(q)$, Beam Weaver uses the IAEA compact three-term
-Gaussian approximation for water,
-\[
-F(q)=\sum_{i=1}^{3} a_i \exp\!\left[-b_i\left(\frac{q}{4\pi}\right)^2\right],
-\]
-with $a=\{0.4899,\,0.2626,\,0.2254\}$ and
-$b=\{1.4752,\,4.1567,\,15.8047\}$. Rayleigh angles are then accepted with a
-weight proportional to
-\[
-\frac{F(q)^2}{F(0)^2}\,\frac{1+\cos^2\theta}{2},
-\]
-i.e. a Thomson-like angular factor modulated by the coherent form factor.
-In the current public release, these coefficients are implemented directly
-in the code as a compact water-specific fit rather than loaded from a
-tabulated molecular form-factor database.
 
 
 # AI usage disclosure
