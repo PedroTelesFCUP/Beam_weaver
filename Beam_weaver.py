@@ -659,7 +659,7 @@ class PenelopeLikeWaterData:
         s=0.0
         for ai,bi in zip(a,b):
             s += ai * math.exp(-bi*(q/(4*math.pi))**2)
-        return s**2
+        return s
 
     def loglog_interp(self, E, grid, vals):
         if E<=grid[0]: return vals[0]
