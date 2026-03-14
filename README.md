@@ -146,6 +146,26 @@ tables:
   interaction probabilities, attenuation quantities, and related
   transport observables are evaluated.
 
+- water_sq.csv
+  Incoherent scattering function from Hubbel et al (1975)
+using the independent-atom,
+stoichiometric sum for water:
+
+
+`S_H2O(x) = 2*S_H(x) + S_O(x)`
+
+
+where `x = sin(theta/2)/lambda`.
+
+For compatibility with the current Beam Weaver code, the file is stored with
+columns `q,S_q`, although the tabulated axis corresponds to Hubbell's
+`x = sin(theta/2)/lambda` rather than the full scattering-vector magnitude.
+This matches the current implementation, which computes the full momentum
+transfer and then converts it to the table variable internally through
+`x_table = q / 2`.
+
+Note that the coherent form Factor is built from the IAEA polynomial interpolation.
+
 
 The following files are also used by the present code.
 
