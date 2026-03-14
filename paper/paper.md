@@ -221,7 +221,7 @@ this quantity is stored in `water_sq.csv` under the legacy column name `q`,
 while the sampler internally converts the full momentum transfer to the
 Hubbell table variable before interpolation.
 
-For the coherent form factor $F(q)$, Beam Weaver uses a Cromer.Mann style compact three-term
+For the coherent form factor $F(q)$, Beam Weaver uses a Cromer-Mann style compact three-term
 Gaussian approximation for water,
 
 $F(q)=\sum_{i=1}^{3} a_i \exp\!\left[-b_i\left(\frac{q}{4\pi}\right)^2\right],$
