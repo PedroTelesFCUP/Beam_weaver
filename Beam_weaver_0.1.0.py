@@ -582,7 +582,14 @@ class ComptonSampler:
 #                PENELOPE-LIKE WATER DATA
 ###############################################################################
 class PenelopeLikeWaterData:
-    def __init__(self, final_csv_path: str, rayleigh_csv_path: str, density=1.0, oxy_shell_csv="OxygenPhotoShells.csv"):
+    def __init__(
+        self,
+        final_csv_path: str,
+        rayleigh_csv_path: str,
+        density=1.0,
+        oxy_shell_csv="OxygenPhotoShells.csv",
+        coherent_ff_csv="water_fq.csv",
+    ):
         # Load Rayleigh (coherent) cross-sections
         df_rayleigh = pd.read_csv(rayleigh_csv_path)
         self.E_coh = df_rayleigh["E"].values
@@ -613,9 +620,19 @@ class PenelopeLikeWaterData:
 
         self.density = density
         self.oxy_shell_data = OxygenPhotoShellData(oxy_shell_csv)
+        # Load tabulated coherent form factor for water.
+        # NOTE: the CSV column name is 'q', but the stored axis is actually
+        # Hubbell's x = sin(theta/2)/lambda in Å^-1.
+        ff_data = np.genfromtxt(coherent_ff_csv, delimiter=",", names=True)
+        self.ff_x = np.asarray(ff_data["q"], dtype=float)
+        self.ff_F = np.asarray(ff_data["F_q"], dtype=float)
+
+        sort_idx_ff = np.argsort(self.ff_x)
+        self.ff_x = self.ff_x[sort_idx_ff]
+        self.ff_F = self.ff_F[sort_idx_ff]
         
         self.HC_KEV_A = 12.3984
-        self.F0 = self.iaea_form_factor(0.0)
+        self.F0 = self.coherent_form_factor((0.0)
     
     def partial_cs(self, E):
         c = self.loglog_interp(E, self.E_coh, self.sigma_coh) * self.density
@@ -651,15 +668,33 @@ class PenelopeLikeWaterData:
             return None
         mapping = {"K":0,"L1":1,"L2":2,"L3":3}
         return mapping[name]
-
-    def iaea_form_factor(self, q):
-        # 3-term Gaussian approximation
-        a=[0.4899,0.2626,0.2254]
-        b=[1.4752,4.1567,15.8047]
-        s=0.0
-        for ai,bi in zip(a,b):
-            s += ai * math.exp(-bi*(q/(4*math.pi))**2)
-        return s
+    def coherent_form_factor(self, q_ang_inv):
+        """
+        Interpolate the tabulated water coherent form factor.
+    
+        q_ang_inv : full momentum transfer in Å^-1 used in the Rayleigh sampler.
+        The Hubbell table is tabulated in x = sin(theta/2)/lambda, so:
+            x = q / 2
+        """
+        x_table = 0.5 * float(q_ang_inv)
+        return float(
+            np.interp(
+                x_table,
+                self.ff_x,
+                self.ff_F,
+                left=self.ff_F[0],
+                right=self.ff_F[-1],
+            )
+        )
+### DEPRECATED
+#    def iaea_form_factor(self, q):
+#        # 3-term Gaussian approximation
+#        a=[0.4899,0.2626,0.2254]
+#        b=[1.4752,4.1567,15.8047]
+#        s=0.0
+#        for ai,bi in zip(a,b):
+#            s += ai * math.exp(-bi*(q/(4*math.pi))**2)
+#        return s
 
     def loglog_interp(self, E, grid, vals):
         if E<=grid[0]: return vals[0]
@@ -728,7 +763,7 @@ def sample_rayleigh(E, old_dir, data):
     shell_onehot = [0, 0, 0, 0]  # No shell activation for Rayleigh
     EkeV = E * 1e3  # Convert MeV to keV
     k = EkeV / data.HC_KEV_A  # Wave number in Å⁻¹
-    F0 = data.iaea_form_factor(0.0)
+    F0 = data.self.coherent_form_factor((0.0)
     
     # PENELOPE-style screening angle parameters
     a = 0.025  # Screening parameter (adjusted for water)
