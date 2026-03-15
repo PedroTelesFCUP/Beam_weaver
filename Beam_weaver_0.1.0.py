@@ -71,11 +71,12 @@ r0 = 2.8179e-13 # cm
 HC_KEV_A = 12.3984    # Planck*c in keV·Å (for E(keV) -> wave number in 1/Å)
 
 # Binding energies in eV for each oxygen shell:
-O_SHELL_BINDINGS = {
-    "K": 532.0,   # eV
-    "L1": 40.0,   # eV
-    "L2": 17.0,   # eV
-    "L3": 17.0    # eV
+PHOTO_SHELL_BINDINGS = {
+    "H_K": 13.6,
+    "O_K": 532.0,
+    "O_L1": 40.0,
+    "O_L2": 17.0,
+    "O_L3": 17.0,
 }
 N_STEPS_RETURN = 25 
 # ───── PHYSICS‑AWARE NORMALISERS ──────────────────────────────────────────────
@@ -433,52 +434,123 @@ class NStepReplayBuffer(ReplayBuffer):
         )
 
 ###############################################################################
-#                        OXYGEN PHOTO SHELL DATA
+#                        WATER PHOTO SHELL DATA
 ###############################################################################
-class OxygenPhotoShellData:
-    def __init__(self, csv_path="OxygenPhotoShells.csv"):
+
+class WaterPhotoShellData:
+    def __init__(self, csv_path="WaterPhotoShells.csv"):
         df = pd.read_csv(csv_path)
         self.Egrid = df["E_MeV"].values
-        self.Kvals = df["K_cm2g"].values
-        self.L1vals = df["L1_cm2g"].values
-        self.L2vals = df["L2_cm2g"].values
-        self.L3vals = df["L3_cm2g"].values
-        
-        # Ensure ascending order
+        self.HKvals  = df["H_K_cm2g"].values
+        self.OKvals  = df["O_K_cm2g"].values
+        self.OL1vals = df["O_L1_cm2g"].values
+        self.OL2vals = df["O_L2_cm2g"].values
+        self.OL3vals = df["O_L3_cm2g"].values
+
         if not all(self.Egrid[i] <= self.Egrid[i+1] for i in range(len(self.Egrid)-1)):
             sort_idx = self.Egrid.argsort()
-            self.Egrid = self.Egrid[sort_idx]
-            self.Kvals = self.Kvals[sort_idx]
-            self.L1vals = self.L1vals[sort_idx]
-            self.L2vals = self.L2vals[sort_idx]
-            self.L3vals = self.L3vals[sort_idx]
+            self.Egrid  = self.Egrid[sort_idx]
+            self.HKvals = self.HKvals[sort_idx]
+            self.OKvals = self.OKvals[sort_idx]
+            self.OL1vals = self.OL1vals[sort_idx]
+            self.OL2vals = self.OL2vals[sort_idx]
+            self.OL3vals = self.OL3vals[sort_idx]
 
     def _loglog_interp(self, E, grid, vals):
         if E <= grid[0]:
             return vals[0]
         if E >= grid[-1]:
             return vals[-1]
-        left= 0
-        right= len(grid)-1
-        while right-left>1:
-            mid= (left+right)//2
-            if grid[mid]> E:
-                right= mid
+        left = 0
+        right = len(grid) - 1
+        while right - left > 1:
+            mid = (left + right) // 2
+            if grid[mid] > E:
+                right = mid
             else:
-                left= mid
-        x1= grid[left]
-        x2= grid[right]
-        y1= vals[left]
-        y2= vals[right]
-        if y1<=0 or y2<=0:
+                left = mid
+        x1 = grid[left]
+        x2 = grid[right]
+        y1 = vals[left]
+        y2 = vals[right]
+        if y1 <= 0 or y2 <= 0:
             return 0.0
-        logE= math.log(E)
-        lx1= math.log(x1)
-        lx2= math.log(x2)
-        ly1= math.log(y1)
-        ly2= math.log(y2)
-        frac= (logE - lx1)/(lx2 - lx1)
-        return math.exp(ly1 + frac*(ly2-ly1))
+        lx1 = math.log(x1)
+        lx2 = math.log(x2)
+        ly1 = math.log(y1)
+        ly2 = math.log(y2)
+        frac = (math.log(E) - lx1) / (lx2 - lx1)
+        return math.exp(ly1 + frac * (ly2 - ly1))
+
+    def pick_shell(self, E):
+        HK  = self._loglog_interp(E, self.Egrid, self.HKvals)
+        OK  = self._loglog_interp(E, self.Egrid, self.OKvals)
+        OL1 = self._loglog_interp(E, self.Egrid, self.OL1vals)
+        OL2 = self._loglog_interp(E, self.Egrid, self.OL2vals)
+        OL3 = self._loglog_interp(E, self.Egrid, self.OL3vals)
+
+        total = HK + OK + OL1 + OL2 + OL3
+        if total < 1e-30:
+            return (None, 0.0)
+
+        r = random.random() * total
+        if r < HK:
+            return ("H_K", HK)
+        r -= HK
+        if r < OK:
+            return ("O_K", OK)
+        r -= OK
+        if r < OL1:
+            return ("O_L1", OL1)
+        r -= OL1
+        if r < OL2:
+            return ("O_L2", OL2)
+        return ("O_L3", OL3)
+# Deprecated it only accounted for oxygen
+#class OxygenPhotoShellData:
+#    def __init__(self, csv_path="OxygenPhotoShells.csv"):
+#        df = pd.read_csv(csv_path)
+#        self.Egrid = df["E_MeV"].values
+#        self.Kvals = df["K_cm2g"].values
+#        self.L1vals = df["L1_cm2g"].values
+#        self.L2vals = df["L2_cm2g"].values
+#        self.L3vals = df["L3_cm2g"].values
+#        
+#        # Ensure ascending order
+#        if not all(self.Egrid[i] <= self.Egrid[i+1] for i in range(len(self.Egrid)-1)):
+#            sort_idx = self.Egrid.argsort()
+#            self.Egrid = self.Egrid[sort_idx]
+#            self.Kvals = self.Kvals[sort_idx]
+#            self.L1vals = self.L1vals[sort_idx]
+#            self.L2vals = self.L2vals[sort_idx]
+#            self.L3vals = self.L3vals[sort_idx]
+#
+#    def _loglog_interp(self, E, grid, vals):
+#        if E <= grid[0]:
+#            return vals[0]
+#        if E >= grid[-1]:
+#            return vals[-1]
+#        left= 0
+#        right= len(grid)-1
+#        while right-left>1:
+#            mid= (left+right)//2
+#            if grid[mid]> E:
+#                right= mid
+#            else:
+#                left= mid
+#        x1= grid[left]
+#        x2= grid[right]
+#        y1= vals[left]
+#        y2= vals[right]
+#        if y1<=0 or y2<=0:
+#            return 0.0
+#        logE= math.log(E)
+#        lx1= math.log(x1)
+#        lx2= math.log(x2)
+#        ly1= math.log(y1)
+#        ly2= math.log(y2)
+#        frac= (logE - lx1)/(lx2 - lx1)
+#        return math.exp(ly1 + frac*(ly2-ly1))
         
     def pick_shell(self, E):
         Kval  = self._loglog_interp(E, self.Egrid, self.Kvals)
@@ -587,7 +659,7 @@ class PenelopeLikeWaterData:
         final_csv_path: str,
         rayleigh_csv_path: str,
         density=1.0,
-        oxy_shell_csv="OxygenPhotoShells.csv",
+        water_shell_csv="WaterPhotoShells.csv"
         coherent_ff_csv="water_fq.csv",
     ):
         # Load Rayleigh (coherent) cross-sections
@@ -619,7 +691,7 @@ class PenelopeLikeWaterData:
         self.log_sigma_ppr = np.log(self.sigma_ppr + 1e-12)
 
         self.density = density
-        self.oxy_shell_data = OxygenPhotoShellData(oxy_shell_csv)
+        self.water_shell_data = WaterPhotoShellData(water_shell_csv)
         # Load tabulated coherent form factor for water.
         # NOTE: the CSV column name is 'q', but the stored axis is actually
         # Hubbell's x = sin(theta/2)/lambda in Å^-1.
@@ -666,7 +738,7 @@ class PenelopeLikeWaterData:
         name,_ = self.oxy_shell_data.pick_shell(E)
         if name is None: 
             return None
-        mapping = {"K":0,"L1":1,"L2":2,"L3":3}
+        mapping = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
         return mapping[name]
     def coherent_form_factor(self, q_ang_inv):
         """
@@ -760,7 +832,7 @@ def rotate_direction(old_dir, theta, phi):
     return np.array([u2, v2, w2])
 
 def sample_rayleigh(E, old_dir, data):
-    shell_onehot = [0, 0, 0, 0]  # No shell activation for Rayleigh
+    shell_onehot = [0, 0, 0, 0, 0]  # No shell activation for Rayleigh
     EkeV = E * 1e3  # Convert MeV to keV
     k = EkeV / data.HC_KEV_A  # Wave number in Å⁻¹
     F0 = data.self.coherent_form_factor((0.0)
@@ -848,7 +920,7 @@ def sample_compton(E, old_dir, data=None):
     secs = [("electron", T, edir, "compton_e")]
     
     # Default shell onehot (no photoelectric event)
-    shell_onehot = [0, 0, 0, 0]
+    shell_onehot = [0, 0, 0, 0, 0]
     
     return (new_dir, Eout, secs, "compton", shell_onehot)
 
@@ -867,11 +939,11 @@ def sample_dipole_direction():
 def sample_photoelectric(E, old_dir, data):
     idx = data.pick_photo_shell(E)
     if idx is None:
-        shell_onehot = [0, 0, 0, 0]
+        shell_onehot = [0, 0, 0, 0, 0]
         return (old_dir, E, [], "photo_none", shell_onehot)
-    shellMap = {0:"K", 1:"L1", 2:"L2", 3:"L3"}
+    shellMap = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
     shellName = shellMap[idx]
-    shell_onehot = [0, 0, 0, 0]
+    shell_onehot = [0, 0, 0, 0, 0]
     shell_onehot[idx] = 1
     Eb_eV = O_SHELL_BINDINGS[shellName]
     Eb_MeV = Eb_eV * 1e-6
@@ -881,7 +953,7 @@ def sample_photoelectric(E, old_dir, data):
     
     secs = []
     # Determine angular distribution based on shell
-    if shellName == "K":
+    if shellName == ("H_K", "O_K"):
         # Sauter distribution for K-shell
         T = E_e / mec2  # Kinetic energy in units of mec²
         beta = math.sqrt(T * (T + 2)) / (T + 1)
@@ -1382,7 +1454,7 @@ def accept_prob_rayleigh(E_in, cos_theta, data):
     return float(np.clip(ratio * (1 + cos_theta**2)/2, 0.0, 1.0)), dist
 
 # ── mirrors `sample_photoelectric()` step -for -step ─────────────
-def accept_prob_photo(E_in, cos_theta, shell='K'):
+def accept_prob_photo(E_in, cos_theta, shell='O_K'):
     """
     Acceptance probability for photo-electric events, consistent with the
     rejection test inside `sample_photoelectric()`.
@@ -1396,7 +1468,7 @@ def accept_prob_photo(E_in, cos_theta, shell='K'):
     dist = np.ones(180)  # Default uniform for L-shells
 
     # -------- L-shells: the sampler takes the angle outright -----------
-    if shell.upper().startswith('L'):
+    if shell in ('O_L1', 'O_L2', 'O_L3'):
         # Uniform distribution in cos theta -> sin(theta) distribution in theta
         for i, angle_rad in enumerate(angles_rad):
             dist[i] = np.sin(angle_rad)
@@ -1406,7 +1478,7 @@ def accept_prob_photo(E_in, cos_theta, shell='K'):
         return 1.0, dist
 
     # -------- K-shell: rejection factor g = (1 − β cosθ)/2 -------------
-    Eb_MeV = O_SHELL_BINDINGS['K'] * 1e-6
+    Eb_MeV = PHOTO_SHELL_BINDINGS[shell] * 1e-6
     T      = (E_in - Eb_MeV) / mec2       # kinetic energy / m_ec²
     if T <= 0.0:
         return 0.0, np.zeros(180)         # photon below binding energy
@@ -1667,7 +1739,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
 
         self._phi_p_acc  = 0+0j    # complex sum for positrons
         self._phi_p_cnt  = 0
-        self.shell_names = ["K", "L1", "L2", "L3"]
+        self.shell_names = ["H_K", "O_K", "O_L1", "O_L2", "O_L3"]
         self.initialize_angle_tracking()
 
         # Per-bin angle tracking for phases 2+ continuous head learning
@@ -2256,7 +2328,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # ─────────────────────────────────────────────────────────────
         # 5)  Available kinetic energy  (Q subtracted)
         # ─────────────────────────────────────────────────────────────
-        Eb_list = [O_SHELL_BINDINGS[s]*1e-6 for s in ("K", "L1", "L2", "L3")]
+        Eb_list = [PHOTO_SHELL_BINDINGS[s]*1e-6 for s in ("H_K", "O_K", "O_L1", "O_L2", "O_L3")]
         mec2    = 0.51099895069
         if discrete_choice == 2:          # photoelectric
             Q = sum(h*eb for h, eb in zip(shell_onehot, Eb_list))
@@ -5729,8 +5801,8 @@ def run_agent_shower(
                 # ——— Build predicted secondary energies & directions ———
                 # 1) Compute Q sink and available E
                 if disc == 2:  # photoelectric
-                    shell_name, _ = data.oxy_shell_data.pick_shell(energies[i])
-                    idx_map = {"K": 0, "L1": 1, "L2": 2, "L3": 3}
+                    shell_name, _ = data.water_shell_data.pick_shell(energies[i])
+                    idx_map = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
                     shell_onehot[idx_map[shell_name]] = 1
                     Eb = O_SHELL_BINDINGS[shell_name] * 1e-6
                     Q  = Eb
