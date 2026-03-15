@@ -78,11 +78,11 @@ The evaluation workflow supports comparison between Monte Carlo reference behavi
 
 ## Why this software exists
 
-Monte Carlo radiation transport remains the reference approach for detailed stochastic transport simulation, but it is often computationally expensive. Beam Weaver was created as a proof-of-concept framework for studying whether reinforcement learning can reproduce key parts of the photon transport loop while remaining physically grounded.
+Monte Carlo iation transport remains the reference approach for detailed stochastic transport simulation, but it is often computationally expensive. Beam Weaver was created as a proof-of-concept framework for studying whether reinforcement learning can reproduce key parts of the photon transport loop while remaining physically grounded.
 
 The project therefore sits at the intersection of:
 
-- radiation transport simulation
+- iation transport simulation
 - reinforcement learning
 - physics-informed machine learning
 - surrogate modeling for Monte Carlo workflows
@@ -98,7 +98,7 @@ Its purpose is research: to investigate whether a physics-informed RL agent can 
 
 This release currently centers on one large Python script plus metadata and packaging files:
 
-- `Beam_weaver.py` — main research code
+- `Beam_weaver_0.1.0.py` — main research code
 - `README.md` — project overview and usage notes
 - `LICENSE` — software license
 - `LICENSE-THIRD-PARTY.md` — third-party boundaries and attribution notes
@@ -268,12 +268,12 @@ pip install -r requirements.txt
 
 ### 2. Place the data files
 
-Copy the required CSV, NPZ, PKL, and PTH files into the repository root, or edit the paths in `Rad_sac_24_maio_fixed.py` to match your own layout.
+Copy the required CSV, NPZ, PKL, and PTH files into the repository root, or edit the paths in `Beam_weaver_0.1.0.py` to match your own layout.
 
 ### 3. Run Beam Weaver
 
 ```bash
-python Beam_weaver.py
+python Beam_weaver_0.1.0.py
 ```
 
 The script is interactive and can be used to:
