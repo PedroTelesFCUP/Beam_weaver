@@ -262,45 +262,29 @@ Instead, the actor loss is multitask:
 
 
 $$
-\mathcal{L}_{\mathrm{actor}}
-=
-\mathcal{L}_{\mathrm{SAC}}
-+
-\lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}},
+\mathcal{L}_{\mathrm{actor}}=\mathcal{L}_{\mathrm{SAC}}+\lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}},
 $$
 
 
 where
 
 $$
-\mathcal{L}_{\mathrm{SAC}}
-=
-\mathbb{E}\left[\alpha \log \pi(a\mid s) - Q(s,a)\right].
+\mathcal{L}_{\mathrm{SAC}}=\mathbb{E}\left[\alpha \log \pi(a\mid s) - Q(s,a)\right].
 $$
 
 The auxiliary physics term currently takes the form
 
 $$
-\mathcal{L}_{\mathrm{phys}}
-=
-\mathcal{L}_E
-+
-\mathcal{L}_\theta
-+
-0.4\,\mathcal{L}_{\mathrm{norm}}
-+
-\mathcal{L}_N
-+
-\mathcal{L}_P,
+\mathcal{L}_{\mathrm{phys}}=\mathcal{L}_E+\mathcal{L}_\theta+0.4\,\mathcal{L}_{\mathrm{norm}}+\mathcal{L}_N+\mathcal{L}_P,
 $$
 
 where:
-- `\mathcal{L}_E` is the interaction-aware energy loss,
-- `\mathcal{L}_\theta` is the interaction-aware angular loss,
-- `\mathcal{L}_{\mathrm{norm}}` penalizes sine/cosine pairs that drift
+- $\mathcal{L}_E$ is the interaction-aware energy loss,
+- $\mathcal{L}_\theta$ is the interaction-aware angular loss,
+- $\mathcal{L}_{\mathrm{norm}}$ penalizes sine/cosine pairs that drift
   away from unit norm,
-- `\mathcal{L}_N` is the number-of-secondaries classification loss,
-- `\mathcal{L}_P` is the interaction-type classification loss.
+- $\mathcal{L}_N$ is the number-of-secondaries classification loss,
+- $\mathcal{L}_P$ is the interaction-type classification loss.
 
 Thus, Beam Weaver is best understood as an n-step **physics-regularized hybrid
 SAC framework** rather than a vanilla SAC implementation.
