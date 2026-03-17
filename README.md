@@ -594,11 +594,13 @@ For photoelectric absorption and pair production, the outgoing photon
 energy should be zero. The code therefore adds
 
 $$
-r_{E\text{-corr},t}=\begin{cases}-5, & \text{if } a_t\in\{\text{photo},\text{pair}\}\text{ and } E_{\gamma}^{\mathrm{pred}}>10^{-12},\\0,  &\text{otherwise.}\end{cases}
+r_{E\text{-corr},t} = \begin{cases} -5, & \text{if } a_t \in \{\text{photo}, \text{pair}\} \text{ and } E_{\gamma}^{\mathrm{pred}} > 10^{-12}, \\ 0, & \text{otherwise.} \end{cases}
 $$
 
 This term is always added during the kernel-learning stages because the
 wrapper returns
+
+
 $$
 R_t^{(\ge 2)} = r_{\mathrm{kernel},t} + r_{E\text{-corr},t}.
 $$
