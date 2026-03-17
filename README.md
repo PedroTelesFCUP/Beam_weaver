@@ -47,10 +47,10 @@ Readers should therefore understand Beam Weaver as a **hybrid SAC variant with n
 
 ## Scientific scope
 
-The current implementation studies photon transport in a **homogeneous water phantom** and packages a single main research script, $Beam_weaver.py$, which contains:
+The current implementation studies photon transport in a **homogeneous water phantom** and packages a single main research script, `Beam_weaver.py`, which contains:
 
 - a custom Monte Carlo-style photon transport simulator in water
-- a custom $WaterPhotonHybridEnvPenelope$ environment
+- a custom `WaterPhotonHybridEnvPenelope` environment
 - a hybrid n-step SAC actor-critic implementation for mixed discrete/continuous prediction
 - curriculum-based training logic with phase switching
 - physics-head pretraining on Monte Carlo-generated targets
@@ -112,8 +112,8 @@ The observation vector is z-scored before pretraining. The physical
 targets are also transformed into numerically convenient forms:
 - The interaction class is kept as
   discrete labels,
-- free path and energies are mapped as $log(1 + x)$,
-- angular quantities are represented as $sin(theta)$ and $cos(theta)$,
+- free path and energies are mapped as `log(1 + x)`,
+- angular quantities are represented as `sin(theta)` and `cos(theta)`,
 - The number of secondaries, also kept as a discrete label.
 
 
@@ -150,12 +150,12 @@ w_E = w_\theta = w_N = w_P = 0.25.
 $$
 
 In the current code:
-- $\mathcal{L}_P$ is a cross-entropy loss for the interaction type;
-- $\mathcal{L}_E$ is a masked mean-squared loss over $\log(1+fp)$;
-  $\log(1+E_{out})$, and the secondary log-energies;
-- $\mathcal{L}_\theta$ is a masked mean-squared loss over the sine/cosine
+- `\mathcal{L}_P` is a cross-entropy loss for the interaction type;
+- `\mathcal{L}_E` is a masked mean-squared loss over `log(1+fp)`;
+  `log(1+E_out)`, and the secondary log-energies;
+- `\mathcal{L}_\theta` is a masked mean-squared loss over the sine/cosine
   representation of photon and secondary angles;
-- $\mathcal{L}_N$ is a cross-entropy loss for the number of secondaries.
+- `\mathcal{L}_N` is a cross-entropy loss for the number of secondaries.
 
 Secondary particle production is masked so that nonexistent secondaries do not
 contribute to the objective, this means for instance that Photoelectric or Rayleigh interactions
@@ -187,7 +187,7 @@ The observation space encodes:
 
 The action space is hybrid but flattened for implementation:
 - the first component is a discrete interaction choice
-  ($rayleigh$, $compton$, $photoelectric$, $pair$);
+  (`rayleigh`, `compton`, `photoelectric`, `pair`);
 - the remaining components parameterize the remainder continuous outputs such as free
   path / attenuation behavior, scattered-photon quantities, and
   secondary-particle energies and directions.
@@ -420,7 +420,7 @@ kernel
 $$
 A_i(\cdot)
 $$
-through $accept_prob(...)$, where \(i\in\{\text{Rayleigh, Compton,
+through `accept_prob(...)`, where \(i\in\{\text{Rayleigh, Compton,
 Photoelectric, Pair}\}\). The primary angular reward is
 $$
 r_{\mathrm{dist},t}^{(i)}
@@ -440,7 +440,7 @@ as good as a uniform angle, reward is small.
 
 For each energy bin and interaction type, Beam Weaver also keeps a short
 history of generated angles and compares the empirical histogram against
-the target angular distribution returned by $accept_prob(...)$.
+the target angular distribution returned by `accept_prob(...)`.
 
 If there are at least 20 stored angles in the corresponding
 energy--interaction bin, the code computes
@@ -696,14 +696,14 @@ then progressively relinquished as the policy takes control.
 
 This release currently centers on one large Python script plus metadata and packaging files:
 
-- $Beam_weaver_0.1.0.py$ — main research code
-- $README.md$ — project overview and usage notes
-- $LICENSE$ — software license
-- $LICENSE-THIRD-PARTY.md$ — third-party boundaries and attribution notes
-- $CITATION.cff$ — machine-readable citation metadata
-- $.zenodo.json$ — Zenodo release metadata
-- $requirements.txt$ / $environment.yml$ — environment specifications
-- $data/README.md$ — notes on expected input data
+- `Beam_weaver_0.1.0.py` — main research code
+- `README.md` — project overview and usage notes
+- `LICENSE` — software license
+- `LICENSE-THIRD-PARTY.md` — third-party boundaries and attribution notes
+- `CITATION.cff` — machine-readable citation metadata
+- `.zenodo.json` — Zenodo release metadata
+- `requirements.txt` / `environment.yml` — environment specifications
+- `data/README.md` — notes on expected input data
 
 
 ## Input data, binning, and generated artifacts
@@ -750,17 +750,17 @@ using the independent-atom,
 stoichiometric sum for water:
 
 
-$S_H2O(x) = 2*S_H(x) + S_O(x)$
+`S_H2O(x) = 2*S_H(x) + S_O(x)`
 
 
-where $x = sin(theta/2)/lambda$.
+where `x = sin(theta/2)/lambda`.
 
 For compatibility with the current Beam Weaver code, the file is stored with
-columns $q,S_q$, although the tabulated axis corresponds to Hubbell's
-$x = sin(theta/2)/lambda$ rather than the full scattering-vector magnitude.
+columns `q,S_q`, although the tabulated axis corresponds to Hubbell's
+`x = sin(theta/2)/lambda` rather than the full scattering-vector magnitude.
 This matches the current implementation, which computes the full momentum
 transfer and then converts it to the table variable internally through
-$x_table = q / 2$.
+`x_table = q / 2`.
 
 Note that the coherent form Factor is built from a Cromer-Mann style interpolation.
 
@@ -851,28 +851,28 @@ We strongly recommend running this software on a GPU available architecture.
 
 Using Conda:
 
-$$$bash
+```bash
 conda env create -f environment.yml
 conda activate beam-weaver
-$$$
+```
 
 Or with pip:
 
-$$$bash
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-$$$
+```
 
 ### 2. Place the data files
 
-Copy the required CSV, NPZ, PKL, and PTH files into the repository root, or edit the paths in $Beam_weaver_0.1.0.py$ to match your own layout.
+Copy the required CSV, NPZ, PKL, and PTH files into the repository root, or edit the paths in `Beam_weaver_0.1.0.py` to match your own layout.
 
 ### 3. Run Beam Weaver
 
-$$$bash
+```bash
 python Beam_weaver_0.1.0.py
-$$$
+```
 
 The script is interactive and can be used to:
 
@@ -888,32 +888,32 @@ The script is interactive and can be used to:
 Run the script and generate the Monte Carlo dataset used for physics-head supervision.
 
 Expected output:
-- $mc_physics_data.npz$
+- `mc_physics_data.npz`
 
 ### Pretrain the physics head
 Run the pretraining path to fit the physics-informed subnetwork on Monte Carlo-derived targets.
 
 Expected output:
-- $physics_head_pretrained.pth$
+- `physics_head_pretrained.pth`
 
 ### Train a policy
 Choose training mode and provide total timesteps and an evaluation energy.
 
 Typical outputs include:
-- $hybrid_sac_model.zip$
-- $replay_buffer.pkl$
-- $histograms.pkl$
-- $acc_stats.pkl$
-- $dist_stats.pkl$
-- $tb_logs/$
-- $older/$
+- `hybrid_sac_model.zip`
+- `replay_buffer.pkl`
+- `histograms.pkl`
+- `acc_stats.pkl`
+- `dist_stats.pkl`
+- `tb_logs/`
+- `older/`
 
 ### Evaluate a trained policy
 Choose evaluation mode and provide a fixed photon energy.
 
 The current evaluation path expects:
-- $hybrid_sac_model.zip$
-- $replay_buffer.pkl$
+- `hybrid_sac_model.zip`
+- `replay_buffer.pkl`
 
 ## Current project status
 
@@ -964,10 +964,10 @@ In particular, the project clearly acknowledges that the Monte Carlo side of Bea
 
 Beam Weaver should be cited through the archived Zenodo release for the specific version used. The software record should list both authors.
 
-A machine-readable citation file is provided in $CITATION.cff$, and Zenodo metadata is provided in $.zenodo.json$.
+A machine-readable citation file is provided in `CITATION.cff`, and Zenodo metadata is provided in `.zenodo.json`.
 
 ## License
 
 Beam Weaver’s original code in this repository is released under the **Apache License 2.0**.
 
-Third-party data, manuals, and dependencies remain under their own respective licenses and usage terms. See $LICENSE-THIRD-PARTY.md$.
+Third-party data, manuals, and dependencies remain under their own respective licenses and usage terms. See `LICENSE-THIRD-PARTY.md`.
