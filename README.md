@@ -138,7 +138,7 @@ interaction-specific transport kernels rather than as a single global
 regressor.
 
 The pretraining loss is a weighted sum of four terms:
-\[
+$$
 \mathcal{L}_{\mathrm{pre}}
 =
 w_E \mathcal{L}_E
@@ -148,11 +148,11 @@ w_\theta \mathcal{L}_\theta
 w_N \mathcal{L}_N
 +
 w_P \mathcal{L}_P,
-\]
+$$
 with equal default weights
-\[
+$$
 w_E = w_\theta = w_N = w_P = 0.25.
-\]
+$$
 
 In the current code:
 - `\mathcal{L}_P` is a cross-entropy loss for the interaction type;
@@ -247,14 +247,14 @@ two reasons.
 
 First, the TD target uses an n-step return rather than a purely 1-step
 backup:
-\[
+$$
 y_t^{(n)}
 =
 r_t^{(n)}
 +
 \gamma^n \left(Q_{\mathrm{target}}(s_{t+n}, a_{t+n})
 - \alpha \log \pi(a_{t+n}\mid s_{t+n})\right).
-\]
+$$
 
 Second, during teacher-forced phases, the replay buffer stores the
 **overridden Monte Carlo-consistent action** rather than the raw action
@@ -268,22 +268,22 @@ is withdrawn.
 
 During RL, Beam Weaver does not optimize a pure SAC objective alone.
 Instead, the actor loss is multitask:
-\[
+$$
 \mathcal{L}_{\mathrm{actor}}
 =
 \mathcal{L}_{\mathrm{SAC}}
 +
 \lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}},
-\]
+$$
 where
-\[
+$$
 \mathcal{L}_{\mathrm{SAC}}
 =
 \mathbb{E}\left[\alpha \log \pi(a\mid s) - Q(s,a)\right].
-\]
+$$
 
 The auxiliary physics term currently takes the form
-\[
+$$
 \mathcal{L}_{\mathrm{phys}}
 =
 \mathcal{L}_E
@@ -295,7 +295,7 @@ The auxiliary physics term currently takes the form
 \mathcal{L}_N
 +
 \mathcal{L}_P,
-\]
+$$
 where:
 - `\mathcal{L}_E` is the interaction-aware energy loss,
 - `\mathcal{L}_\theta` is the interaction-aware angular loss,
@@ -309,13 +309,392 @@ SAC framework** rather than a vanilla SAC implementation.
 
 ### Reward design and curriculum targets
 
-In the early curriculum, the dominant reward is the discrete interaction
-reward, which compares predicted interaction frequencies against the
-reference physics mixture on an energy-binned grid. In later phases, the
-reward shifts toward transport-kernel consistency, including angular
-acceptance, angular-distribution matching, and energy-consistency terms.
-This staged reward design mirrors the staged freezing/unfreezing of the
-actor heads.
+Beam Weaver does not use a single stationary reward throughout training.
+Instead, the reward is **phase-dependent** and is switched explicitly by
+the curriculum wrapper.
+
+Let the full environment-level reward be
+$$
+R_t^{\mathrm{full}} = r_{\mathrm{disc},t} + r_{\mathrm{kernel},t} + r_{E\text{-corr},t}.
+$$
+
+In the current implementation, the curriculum wrapper does **not**
+always expose this full reward to SAC. Instead, it returns:
+
+- **Phase 0:**  
+  $$
+  R_t^{(0)} = r_{\mathrm{disc},t}
+  $$
+- **Phase 1:**  
+  $$
+  R_t^{(1)} = r_{\mathrm{disc},t}
+  $$
+- **Phase 2 and later curriculum phases:**  
+  $$
+  R_t^{(\ge 2)} = r_{\mathrm{kernel},t} + r_{E\text{-corr},t}
+  $$
+
+So the early curriculum is a **discrete-policy learning stage**, whereas
+the later curriculum is a **continuous/kernel learning stage**.
+
+#### 1. Discrete interaction reward used in phases 0--1
+
+In phases 0--1, the goal is to make the agent reproduce the correct
+interaction mixture
+$$
+\pi_{\mathrm{true}}(a\mid E)
+$$
+on the Beam Weaver energy grid.
+
+At each step, the incoming photon energy is assigned to an energy bin
+\(b(E_t)\). The code maintains:
+
+- an exponentially weighted moving histogram \(H_{b,a}\) of recent
+  agent-selected discrete actions;
+- a cumulative histogram \(C_{b,a}\) used for diagnostics and bin
+  validity checks.
+
+The EWMA update is
+$$
+H_{b,a} \leftarrow \lambda_{\mathrm{hist}} H_{b,a}
+$$
+followed by
+$$
+H_{b(E_t),a_t} \leftarrow H_{b(E_t),a_t} + 1,
+$$
+with
+$$
+\lambda_{\mathrm{hist}} = 0.995.
+$$
+
+Only bins with at least 10 cumulative events are used in the global
+mixture estimate. Let
+$$
+w_b = \mathbf{1}\!\left[\sum_a C_{b,a} \ge 10\right]\sum_a H_{b,a}.
+$$
+The weighted target mixture is then
+$$
+p_{\mathrm{true},a}
+=
+\frac{\sum_b w_b \,\pi_{\mathrm{true},b,a}}{\sum_b w_b},
+$$
+where \(\pi_{\mathrm{true},b,a}\) is the tabulated interaction
+probability in energy bin \(b\).
+
+The discrete reward for the chosen action \(a_t\) is
+$$
+r_{\mathrm{disc},t}
+=
+\log\!\left(
+\frac{p_{\mathrm{true},a_t}+\varepsilon}{1/4+\varepsilon}
+\right),
+$$
+with a uniform baseline \(1/4\) and small numerical \(\varepsilon\).
+
+This is therefore **not** a direct supervised classification loss at the
+environment level. It is a **log-likelihood-ratio reward** that favors
+interaction choices that are more probable under the physics mixture
+than under a uniform baseline.
+
+For monitoring only, the code also computes:
+- the Jensen--Shannon divergence between the recent action histogram and
+  the target mixture,
+- and the global \(L^1\) distance between them.
+
+These quantities are logged, but they are **not directly added** to the
+reward.
+
+#### 2. Kernel reward used from phase 2 onward
+
+Once the discrete curriculum is complete, the reward shifts to a
+continuous/kernel objective. The general form is
+$$
+r_{\mathrm{kernel},t}
+=
+r_{\mathrm{dist},t}
++
+r_{\phi,t}
++
+r_{\phi_e,t}
++
+r_{\theta,\mathrm{pair},t}
++
+r_{E,\mathrm{pair},t}
++
+r_{e,\mathrm{comp},t}.
+$$
+
+This total is clipped to
+$$
+r_{\mathrm{kernel},t} \in [-50,50].
+$$
+
+The terms are process-specific.
+
+##### 2.1 Distribution-matching term
+
+For all four interactions, the code calls a process-specific acceptance
+kernel
+$$
+A_i(\cdot)
+$$
+through `accept_prob(...)`, where \(i\in\{\text{Rayleigh, Compton,
+Photoelectric, Pair}\}\). The primary angular reward is
+$$
+r_{\mathrm{dist},t}^{(i)}
+=
+\log\!\left(
+\frac{A_i+\varepsilon}{1/180+\varepsilon}
+\right),
+$$
+where the baseline \(1/180\) reflects the histogram discretization in
+degrees.
+
+This term says: if the predicted angle lands in a region of high
+physical kernel density, reward it; if it lands in a region that is only
+as good as a uniform angle, reward is small.
+
+##### 2.2 Per-bin KL angular-distribution penalty
+
+For each energy bin and interaction type, Beam Weaver also keeps a short
+history of generated angles and compares the empirical histogram against
+the target angular distribution returned by `accept_prob(...)`.
+
+If there are at least 20 stored angles in the corresponding
+energy--interaction bin, the code computes
+$$
+D_{\mathrm{KL}}(p_{\mathrm{target}}\|p_{\mathrm{empirical}})
+=
+\sum_j p_{\mathrm{target},j}
+\log\!\left(
+\frac{p_{\mathrm{target},j}}{p_{\mathrm{empirical},j}}
+\right),
+$$
+and adds the penalty
+$$
+r_{\mathrm{KL},t}^{(i)}
+=
+-0.05\,
+\mathrm{clip}\!\left(D_{\mathrm{KL}},\,0,\,10\right).
+$$
+
+So the actual distribution term is
+$$
+r_{\mathrm{dist},t}^{(i)}
+\leftarrow
+r_{\mathrm{dist},t}^{(i)} + r_{\mathrm{KL},t}^{(i)}.
+$$
+
+##### 2.3 Rayleigh-specific energy consistency
+
+For Rayleigh scattering, the outgoing photon energy should equal the
+incoming photon energy. The code adds
+$$
+r_{E,\mathrm{Rayleigh},t}
+=
+-0.01\,
+\frac{|E_{\gamma}^{\mathrm{pred}}-E_{\gamma}^{\mathrm{in}}|}
+{\max(E_{\gamma}^{\mathrm{in}},10^{-6})}.
+$$
+
+So the Rayleigh kernel reward is
+$$
+r_{\mathrm{kernel},t}^{\mathrm{Rayleigh}}
+=
+r_{\mathrm{dist},t}^{\mathrm{Rayleigh}}
++
+r_{E,\mathrm{Rayleigh},t}
++
+r_{\phi,t}.
+$$
+
+##### 2.4 Compton-specific electron kinematic consistency
+
+For Compton scattering, the code derives the recoil-electron reference
+kinematics from the predicted photon branch:
+$$
+E_{e,\mathrm{MC}} = E_{\gamma}^{\mathrm{in}} - E_{\gamma}^{\mathrm{pred}},
+$$
+$$
+p_{e,\mathrm{MC}} =
+\sqrt{E_{e,\mathrm{MC}}(E_{e,\mathrm{MC}}+2m_ec^2)},
+$$
+$$
+\cos\theta_{e,\mathrm{MC}}
+=
+\frac{E_{\gamma}^{\mathrm{in}}
+-
+E_{\gamma}^{\mathrm{pred}}\cos\theta_{\gamma}^{\mathrm{pred}}}
+{\max(p_{e,\mathrm{MC}},10^{-12})}.
+$$
+
+The electron consistency penalty is then
+$$
+r_{e,\mathrm{comp},t}
+=
+-
+\left[
+0.05\,
+\frac{|E_{e}^{\mathrm{pred}}-E_{e,\mathrm{MC}}|}
+{\max(E_{e,\mathrm{MC}},10^{-6})}
++
+0.05\,
+\frac{|\theta_{e}^{\mathrm{pred}}-\theta_{e,\mathrm{MC}}|}{\pi}
+\right].
+$$
+
+So the Compton kernel reward is
+$$
+r_{\mathrm{kernel},t}^{\mathrm{Compton}}
+=
+r_{\mathrm{dist},t}^{\mathrm{Compton}}
++
+r_{e,\mathrm{comp},t}
++
+r_{\phi,t}
++
+r_{\phi_e,t}.
+$$
+
+##### 2.5 Photoelectric reward
+
+For photoelectric events, the angular term is evaluated on the emitted
+electron angle using the shell-specific acceptance model:
+$$
+r_{\mathrm{dist},t}^{\mathrm{Photo}}
+=
+\log\!\left(
+\frac{A_{\mathrm{photo}}+\varepsilon}{1/180+\varepsilon}
+\right)
++
+r_{\mathrm{KL},t}^{\mathrm{Photo}}.
+$$
+
+The code also computes a photoelectric electron-energy penalty
+$$
+r_{E,\mathrm{Photo},t}
+=
+-0.01\,
+\frac{|E_{e}^{\mathrm{pred}}-E_{\mathrm{avail}}|}
+{\max(E_{\mathrm{avail}},10^{-6})},
+$$
+but in the current implementation this term is **computed but not added**
+to \(r_{\mathrm{kernel}}\).
+
+So, as the code is presently written,
+$$
+r_{\mathrm{kernel},t}^{\mathrm{Photo}}
+=
+r_{\mathrm{dist},t}^{\mathrm{Photo}}
++
+r_{\phi_e,t},
+$$
+not including \(r_{E,\mathrm{Photo},t}\).
+
+##### 2.6 Pair-production reward
+
+For pair production, the code combines:
+- angular distribution matching,
+- electron azimuthal-uniformity regularization,
+- pair energy-sharing consistency,
+- and a small-angle consistency term.
+
+The pair energy-sharing penalty is
+$$
+r_{E,\mathrm{pair},t}
+=
+-0.05\,
+\frac{|E_e^{\mathrm{pred}}+E_p^{\mathrm{pred}}-(E_{\gamma}^{\mathrm{in}}-2m_ec^2)|}
+{E_{\gamma}^{\mathrm{in}}-2m_ec^2}.
+$$
+
+The polar-angle penalty is
+$$
+r_{\theta,\mathrm{pair},t}
+=
+-\lambda_{\theta}
+\frac{|\theta_e^{\mathrm{pred}}-\theta_{\mathrm{MC}}|}{\theta_{\mathrm{MC}}},
+$$
+where \(\theta_{\mathrm{MC}}\) is a reference small-angle model.
+
+So the intended pair kernel reward is
+$$
+r_{\mathrm{kernel},t}^{\mathrm{Pair}}
+=
+r_{\mathrm{dist},t}^{\mathrm{Pair}}
++
+r_{E,\mathrm{pair},t}
++
+r_{\theta,\mathrm{pair},t}
++
+r_{\phi_e,t}.
+$$
+
+The code also computes a positron azimuthal-uniformity term
+\(r_{\phi_p}\), but this term is **currently not added** to
+\(r_{\mathrm{kernel}}\).
+
+#### 3. Azimuthal-uniformity terms
+
+For processes where azimuth should be uniform, Beam Weaver uses the
+first circular moment:
+$$
+R = \left|\frac{1}{N}\sum_{n=1}^{N} e^{i\phi_n}\right|.
+$$
+
+The corresponding penalty is
+$$
+r_{\phi} = -\lambda_{\phi} R,
+\qquad
+\lambda_{\phi}=0.05.
+$$
+
+This is applied:
+- to photon azimuth for Rayleigh and Compton,
+- to electron azimuth for Compton, photoelectric, and pair production.
+
+The code uses batches of 32 accumulated samples before applying the
+penalty.
+
+#### 4. Explicit forbidden-photon-energy penalty for photoelectric and pair
+
+For photoelectric absorption and pair production, the outgoing photon
+energy should be zero. The code therefore adds
+$$
+r_{E\text{-corr},t}
+=
+\begin{cases}
+-5, & \text{if } a_t\in\{\text{photo},\text{pair}\}
+      \text{ and } E_{\gamma}^{\mathrm{pred}}>10^{-12},\\
+0,  & \text{otherwise.}
+\end{cases}
+$$
+
+This term is always added during the kernel-learning stages because the
+wrapper returns
+$$
+R_t^{(\ge 2)} = r_{\mathrm{kernel},t} + r_{E\text{-corr},t}.
+$$
+
+#### 5. Teacher forcing and reward exposure by phase
+
+The reward phases are aligned with the teacher-forcing schedule:
+
+- **Phase 0:** full teacher forcing of the discrete interaction; reward
+  exposed to SAC is only \(r_{\mathrm{disc}}\).
+- **Phase 1:** discrete teacher forcing is linearly decayed; reward
+  exposed to SAC is still only \(r_{\mathrm{disc}}\).
+- **Phase 2:** kernel outputs are fully overwritten by MC values in the
+  stored action; reward exposed to SAC is
+  \(r_{\mathrm{kernel}} + r_{E\text{-corr}}\).
+- **Phase 3:** kernel teacher forcing is linearly decayed; reward
+  remains \(r_{\mathrm{kernel}} + r_{E\text{-corr}}\).
+- **Later phases:** the code continues using the kernel-stage reward
+  structure.
+
+In other words, the curriculum does not merely freeze and unfreeze
+different heads. It also changes **which part of the objective the agent
+actually sees**.
 
 ### Entropy control
 
