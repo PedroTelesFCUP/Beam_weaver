@@ -633,7 +633,7 @@ radiation transport, not merely its final aggregate outputs? Beam
 Weaver provides a concrete answer path by exposing both agent and
 reference transport at the level of interaction class, secondary
 generation, trajectory evolution, and depth-dose observables in water.
-
+ 
 At the current project stage, the software already supports physically
 meaningful interaction simulation and comparison workflows in the
 target water-phantom setting. Even in its current state---functional
