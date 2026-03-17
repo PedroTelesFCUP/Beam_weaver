@@ -244,14 +244,8 @@ First, the TD target uses an n-step return rather than a purely 1-step
 backup:
 
 $$
-y_t^{(n)}
-=
-r_t^{(n)}
-+
-\gamma^n \left(Q_{\mathrm{target}}(s_{t+n}, a_{t+n})
-- \alpha \log \pi(a_{t+n}\mid s_{t+n})\right).
+y_t^{(n)} = r_t^{(n)} + \gamma^n \left(Q_{\mathrm{target}}(s_{t+n}, a_{t+n}) - \alpha \log \pi(a_{t+n}\mid s_{t+n})\right).
 $$
-
 
 Second, during teacher-forced phases, the replay buffer stores the
 **overridden Monte Carlo-consistent action** rather than the raw action
