@@ -250,7 +250,7 @@ $$
 
 
 Second, during teacher-forced phases, the replay buffer stores the
-**overridden Monte Carlo-consistent action** rather than the raw action
+overridden Monte Carlo-consistent action rather than the raw action
 proposed by the agent. This is a crucial design choice: the off-policy
 dataset seen by the critic and by the auxiliary physics losses is
 therefore anchored to the Monte Carlo reference during curriculum
@@ -298,6 +298,7 @@ Instead, the reward is **phase-dependent** and is switched explicitly by
 the curriculum wrapper.
 
 Let the full environment-level reward be
+
 $$
 R_t^{\mathrm{full}} = r_{\mathrm{disc},t} + r_{\mathrm{kernel},t} + r_{E\text{-corr},t}.
 $$
@@ -316,6 +317,7 @@ $$
 $$
 R_t^{(1)} = r_{\mathrm{disc},t}
 $$
+
 - **Phase 2 and later curriculum phases:**
 
 $$
@@ -324,8 +326,8 @@ $$
   
   
 
-So the early curriculum is a **discrete-policy learning stage**, whereas
-the later curriculum is a **continuous/kernel learning stage**.
+So the early curriculum is a discrete-policy learning stage, whereas
+the later curriculum is a continuous/kernel learning stage.
 
 #### 1. Discrete interaction reward used in phases 0--1
 
@@ -339,11 +341,11 @@ $$
 on the Beam Weaver energy grid.
 
 At each step, the incoming photon energy is assigned to an energy bin
-\(b(E_t)\). The code maintains:
+$b(E_t)$. The code maintains:
 
-- an exponentially weighted moving histogram \(H_{b,a}\) of recent
+- an exponentially weighted moving histogram $H_{b,a}$ of recent
   agent-selected discrete actions;
-- a cumulative histogram \(C_{b,a}\) used for diagnostics and bin
+- a cumulative histogram $C_{b,a}$ used for diagnostics and bin
   validity checks.
 
 The EWMA update is
@@ -381,14 +383,10 @@ $$
 where $\pi_{\mathrm{true},b,a}$ is the tabulated interaction
 probability in energy bin $b$.
 
-The discrete reward for the chosen action \(a_t\) is
+The discrete reward for the chosen action $a_t$ is
 
 $$
-r_{\mathrm{disc},t}
-=
-\log\!\left(
-\frac{p_{\mathrm{true},a_t}+\varepsilon}{1/4+\varepsilon}
-\right),
+r_{\mathrm{disc},t}=\log\!\left(\frac{p_{\mathrm{true},a_t}+\varepsilon}{1/4+\varepsilon}\right),
 $$
 
 with a uniform baseline $1/4$ and small numerical $\varepsilon$.
@@ -400,7 +398,7 @@ than under a uniform baseline.
 For monitoring only, the code also computes:
 - the Jensen--Shannon divergence between the recent action histogram and
   the target mixture,
-- and the global \(L^1\) distance between them.
+- and the global $L^1$ distance between them.
 
 These quantities are logged, but they are not directly added to the
 reward.
@@ -411,19 +409,7 @@ Once the discrete curriculum is complete, the reward shifts to a
 continuous/kernel objective. The general form is
 
 $$
-r_{\mathrm{kernel},t}
-=
-r_{\mathrm{dist},t}
-+
-r_{\phi,t}
-+
-r_{\phi_e,t}
-+
-r_{\theta,\mathrm{pair},t}
-+
-r_{E,\mathrm{pair},t}
-+
-r_{e,\mathrm{comp},t}.
+r_{\mathrm{kernel},t}=r_{\mathrm{dist},t}+r_{\phi,t}+r_{\phi_e,t}+r_{\theta,\mathrm{pair},t}+r_{E,\mathrm{pair},t}+r_{e,\mathrm{comp},t}.
 $$
 
 This total is clipped to
@@ -467,16 +453,20 @@ If there are at least 20 stored angles in the corresponding
 energy--interaction bin, the code computes
 
 $$
-D_{\mathrm{KL}}(p_{\mathrm{target}}\|p_{\mathrm{empirical}})=\sum_j p_{\mathrm{target},j}\log\!\left(\frac{p_{\mathrm{target},j{p_{\mathrm{empirical},j}}\right),
+D_{\mathrm{KL}}(p_{\mathrm{target}}\|p_{\mathrm{empirical}}) = \sum_j p_{\mathrm{target},j} \log\!\left( \frac{p_{\mathrm{target},j}}{p_{\mathrm{empirical},j}} \right),
 $$
+
+
+
 
 and adds the penalty
 
 $$
-r_{\mathrm{KL},t}^{(i)}=-0.05\,\mathrm{clip}\!\left(D_{\mathrm{KL}},\,0,\,10\right).
+r_{\mathrm{KL},t}^{(i)}=-0.05\,\mathrm{clip}\!\left(D_{\mathrm{KL}} ,\ ,0, \, 10\right).
 $$
 
 So the actual distribution term is
+
 $$
 r_{\mathrm{dist},t}^{(i)}\leftarrowr_{\mathrm{dist},t}^{(i)} + r_{\mathrm{KL},t}^{(i)}.
 $$
