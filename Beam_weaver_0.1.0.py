@@ -1962,7 +1962,20 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         print(f"[bins] N_EBINS={self.N_EBINS}, shapes={self.true_prob.shape}")
         print(f"[bins] Seeded histograms with {initial_count} samples per bin based on ground truth")
         return E_grid
-     
+        
+    def _small_angle(self, E_gamma):
+        """
+            θ_char = m_e c² / (E_gamma / 2) = 2 m_e c² / E_gamma.
+
+        This is a standard leading-order estimate from the
+        Bethe–Heitler cross section and is consistent with the
+        PENELOPE angular model in the high-energy limit.  The
+        estimate is used here only as a reference scale for the
+        pair-production angular reward, not as a sampling kernel.
+        """
+        E_total_approx = max(E_gamma / 2.0, mec2) # each particle ≈ half
+        return mec2_local / E_total_approx
+        
     def _denormalize(self, val, param_type):
         """Map from [-1,1] to physical range"""
         min_val, max_val = self.param_ranges[param_type]
@@ -2287,6 +2300,9 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             discrete_choice = raw_disc
             cont = raw_cont
 
+        # Make the copy here 
+        # get a copy of the continuous action for potential modification
+        cont_store = cont.copy()
         # ─────────────────────────────────────────────────────────────
         # 4) Angles extracted from the (possibly-masked) cont (per interaction)
         # Important Note: 
@@ -2370,30 +2386,24 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         else:                             # Pair production
             # Pair: photon completely absorbed, e- and e+ share avail_E
             E_pred = 0.0  # No scattered photon
-    
+
             # Energy partition between e- and e+ (must sum to avail_E)
             raw_e = max(0.0, self._denormalize(cont[4], 'energy'))
             raw_p = max(0.0, self._denormalize(cont[7], 'energy'))
             s = raw_e + raw_p or 1.0
-            # Normalize to ensure sum = avail_E
             Ej_e = (raw_e / s) * avail_E
             Ej_p = (raw_p / s) * avail_E
-    
-            # Network predicted angles
+
+            # Electron angles — policy predicts independently
             theta_e = self._denormalize(cont[5], 'theta')
-            # ---- plane azimuth: actor’s φ_e (slot 6) -------
-            phi0 = self._denormalize(cont[6], 'phi')
+            phi_e   = self._denormalize(cont[6], 'phi')
+            dir_e   = rotate_direction(inc_dir, theta_e, phi_e)
 
-            # build unit vectors
-            ez = np.array([0.0, 0.0, 1.0])
-            dir_e = rot_z(rot_y( +theta_e, ez), phi0)   # electron
-            dir_p = rot_z(rot_y( -theta_e, ez), phi0)   # positron (opposite)
+            # Positron angles — policy also predicts independently
+            theta_p = self._denormalize(cont[8], 'theta')
+            phi_p   = self._denormalize(cont[9], 'phi')
+            dir_p   = rotate_direction(inc_dir, theta_p, phi_p)
 
-            # overwrite critic view
-            cont_store[5] = self._normalise(theta_e, "theta")   # keep θₑ
-            cont_store[8] = -1.0                                # mask θ₊
-
-    
             sec_params = [("electron", Ej_e, dir_e, "pair_e_pred"),
                           ("positron", Ej_p, dir_p, "pair_p_pred")]
 
@@ -2492,8 +2502,8 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         #       • Phase 0-1: Override discrete choice if force_mc_interaction is True
         #       • Phase 2-3: Override angle, energy, etc. with MC "truth"
         # ------------------------------------------------------------------
-        # First get a copy of the continuous action for potential modification
-        cont_store = cont.copy()
+        # Needs to be moved before the first call
+        # cont_store = cont.copy()
         # (A) helper, put inside class above override block
 
 
@@ -2978,7 +2988,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             if discrete_choice == 3:      # only for Pair
                 avail = photon_energy_in - 2*mec2                  # kinetic energy sum
                 if avail > 1e-6:
-                    diff = abs(Ee_pred + Ep_pred - avail) / avail
+                    diff = abs(Ej_e + Ej_p - avail) / avail
                     lambda_E_p  = 0.05                                     # tune later
                     r_E_pair = - lambda_E_p * diff
             # --------------------------------------------------------------
@@ -2989,10 +2999,10 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                 theta_mc   = self._small_angle(photon_energy_in)   # Monte-Carlo reference
                 if theta_mc > 1e-6:
                     rel_err = abs(theta_e - theta_mc) / theta_mc
-                    lambda_theta_po = 0.5          # tune (start 0.2-0.5)
-                    r_theta_pair = - lambda_theta_pol * rel_err
+                    lambda_theta_pair = 0.5          # tune (start 0.2-0.5)
+                    r_theta_pair = - lambda_theta_pair * rel_err
             #---------------------------------------------------------------
-            r_kernel = r_dist + r_phi + r_phi_e + r_theta_pair + r_E_pair + r_e_comp
+            r_kernel = r_dist + r_phi + r_phi_e + r_phi_p + r_theta_pair + r_E_pair + r_e_comp
             r_kernel = max(min(r_kernel, 50.0), -50.0) 
         else:
             r_kernel = 0.0
@@ -3236,6 +3246,7 @@ class PhasedRewardEnv(WaterPhotonHybridEnvPenelope):
         # default phase boundaries if none provided
         self.phase_ends = PHASE_ENDS
         self.global_step = 0
+        self._phase_start_step = 0             # step at which current phase began
 
     def step(self, action):
         # 1) perform underlying step
@@ -3270,8 +3281,9 @@ class PhasedRewardEnv(WaterPhotonHybridEnvPenelope):
         # ── scheduled-sampling update for both Phase 1 and Phase 3 ─────────────
         if self.phase in (1, 3):
             decay_steps = self.t_force_decay_steps         # 30 k by default
-            if self.global_step < decay_steps:
-                self.t_force_prob = 1.0 - self.global_step / decay_steps
+            steps_in_phase = max(self.global_step - self._phase_start_step, 0)
+            if steps_in_phase < decay_steps:
+                self.t_force_prob = 1.0 - steps_in_phase / decay_steps
             else:
                 self.t_force_prob = 0.0
     
@@ -6373,6 +6385,10 @@ class PhaseSwitchCallback(BaseCallback):
             phase = self.current_phase
 
             _set_phase(self.model, phase)
+            # record the step at which this phase started (for decay schedules)
+            for v in self.training_env.envs:
+                b = getattr(v, "env", v)
+                b._phase_start_step = self.num_timesteps
 
         # Reset histograms if phase actually changed
         if original_phase != self.current_phase:
