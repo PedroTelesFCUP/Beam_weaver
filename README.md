@@ -35,11 +35,6 @@ Instead of treating transport as a black-box regression problem, Beam Weaver mod
 
 This makes Beam Weaver closer to a **learned transport-engine prototype** than to a generic machine-learning regressor.
 
-## Current project status
-
-Beam Weaver's central purpose of the project was largely achieved: the code can already simulate the main photon interaction processes in a physically meaningful way and support comparison between the learned agent and the Monte Carlo reference workflow. The main remaining development task  is  **fine-tuning the angular predictions / angular sampling behavior**, which is the principal unfinished component at this time.
-
-In other words, this project is a working research prototype with a specific remaining refinement target.
 
 ### N-step bootstrapping (non-standard SAC extension)
 Beam Weaver does **not** use a strictly vanilla 1-step SAC update. Instead, the current implementation uses an **n-step return** in the critic target through a custom replay-buffer pathway.
@@ -61,7 +56,7 @@ The current implementation studies photon transport in a **homogeneous water pha
 - physics-head pretraining on Monte Carlo-generated targets
 - evaluation utilities for comparing Monte Carlo and agent-generated showers
 
-In its current form, Beam Weaver models four photon interaction channels in water:
+In its current form, Beam Weaver models all four photon interaction channels in water:
 
 1. Rayleigh scattering  
 2. Compton scattering  
@@ -78,7 +73,7 @@ The evaluation workflow supports comparison between Monte Carlo reference behavi
 
 ## Why this software exists
 
-Monte Carlo iation transport remains the reference approach for detailed stochastic transport simulation, but it is often computationally expensive. Beam Weaver was created as a proof-of-concept framework for studying whether reinforcement learning can reproduce key parts of the photon transport loop while remaining physically grounded.
+Monte Carlo simulation transport remains the reference approach for detailed stochastic transport simulation, but it is often computationally expensive. Beam Weaver was created as a proof-of-concept framework for studying whether reinforcement learning can reproduce key parts of the photon transport loop while remaining physically grounded.
 
 The project therefore sits at the intersection of:
 
@@ -93,6 +88,248 @@ Beam Weaver is **not** a validated Monte Carlo engine, or a completed production
 
 
 Its purpose is research: to investigate whether a physics-informed RL agent can learn the structure of stochastic photon transport from a Monte Carlo reference process.
+
+## Learning architecture and training workflow
+
+Beam Weaver is trained in two distinct stages: (i) simulation-supervised
+pretraining of a physics branch, and (ii) curriculum-based off-policy
+reinforcement learning with staged teacher forcing.
+
+### Stage I — pre-training: supervised learning of the physics head on Monte Carlo-generated labels**
+
+Before SAC optimization begins, Beam Weaver generates a Monte
+Carlo dataset of event-level transport targets. For each sampled
+interaction, the code stores an observation vector together with:
+- free path,
+- interaction "class",
+- photon scattering angle,
+- outgoing photon energy,
+- number of secondaries,
+- Secondary-particle energies and angles,
+
+
+The observation vector is z-scored before pretraining. The physical
+targets are also transformed into numerically convenient forms:
+- The interaction class is kept as
+  discrete labels,
+- free path and energies are mapped as `log(1 + x)`,
+- angular quantities are represented as `sin(theta)` and `cos(theta)`,
+- The number of secondaries, also kept as a discrete label.
+
+
+The physics branch is not a single scalar regressor. It is a structured
+multi-head module attached to the shared feature extractor. In the
+current implementation:
+- the shared feature extractor maps the observation to a latent feature
+  vector;
+- a physics backbone processes that latent representation;
+- a process head predicts the interaction class;
+- an energy head predicts interaction-conditional energy quantities;
+- an angle head predicts interaction-conditional angular quantities;
+- a secondary-count head predicts the number of secondaries.
+
+The energy and angle heads are conditioned not only on the latent
+physics representation, but also on:
+- the predicted interaction probabilities, and
+- a one-hot encoding of the current energy bin.
+
+This means the physics branch is trained as a conditional predictor of
+interaction-specific transport kernels rather than as a single global
+regressor.
+
+The pretraining loss is a weighted sum of four terms:
+\[
+\mathcal{L}_{\mathrm{pre}}
+=
+w_E \mathcal{L}_E
++
+w_\theta \mathcal{L}_\theta
++
+w_N \mathcal{L}_N
++
+w_P \mathcal{L}_P,
+\]
+with equal default weights
+\[
+w_E = w_\theta = w_N = w_P = 0.25.
+\]
+
+In the current code:
+- `\mathcal{L}_P` is a cross-entropy loss for the interaction type;
+- `\mathcal{L}_E` is a masked mean-squared loss over `log(1+fp)`;
+  `log(1+E_out)`, and the secondary log-energies;
+- `\mathcal{L}_\theta` is a masked mean-squared loss over the sine/cosine
+  representation of photon and secondary angles;
+- `\mathcal{L}_N` is a cross-entropy loss for the number of secondaries.
+
+Secondary particle production is masked so that nonexistent secondaries do not
+contribute to the objective, this means for instance that Photoelectric or Rayleigh interactions
+will inherently not produce secondaris. A small Gaussian perturbation is also added
+to normalized observations during pretraining for robustness. The
+optimizer is Adam with weight decay, and validation loss is monitored
+with a ReduceLROnPlateau scheduler.
+
+This stage can therefore be described as **supervised learning on
+Monte Carlo-generated labels**.
+
+### Stage II — curriculum-based off-policy SAC with staged teacher forcing
+
+After pretraining, Beam Weaver enters a curriculum-based hybrid SAC
+training stage. The actor has three functional parts:
+1. a discrete policy head for interaction selection;
+2. a continuous policy head for transport parameters;
+3. the pretrained physics branch, which is reused as an auxiliary
+   physics regularizer during RL training.
+
+The observation space encodes:
+- normalized photon position,
+- normalized photon energy and log-energy,
+- photon direction cosines,
+- local transport-step descriptors,
+- normalized interaction cross sections,
+- a fixed-size secondary-history buffer,
+- and a shell one-hot context vector.
+
+The action space is hybrid but flattened for implementation:
+- the first component is a discrete interaction choice
+  (`rayleigh`, `compton`, `photoelectric`, `pair`);
+- the remaining components parameterize the remainder continuous outputs such as free
+  path / attenuation behavior, scattered-photon quantities, and
+  secondary-particle energies and directions.
+
+### Curriculum phases
+
+Beam Weaver does not train all policy components from the 
+beginning or at the same time. Instead, it uses staged curriculum learning.
+
+#### Phase 0 — discrete interaction learning, fully teacher-forced
+Only the shared feature extractor and the discrete head are trainable.
+The discrete interaction choice is overridden by the Monte Carlo truth.
+At the start of this phase, the actor also initializes:
+- the discrete logits from physics-derived interaction probabilities,
+- and the attenuation / mean-free-path component from the tabulated
+  physics reference.
+
+The mean-free-path residual output and its corresponding Gaussian
+variance are then frozen.
+
+#### Phase 1 — discrete interaction learning, teacher forcing decays out
+The same trainable subset is kept, but the discrete teacher forcing is
+progressively reduced. In the current implementation this decay is
+linear over a fixed horizon. This stage therefore acts as scheduled
+teacher forcing from Monte Carlo-labeled interaction selection toward
+autonomous discrete policy learning.
+
+#### Phase 2 — continuous/kernel learning, fully teacher-forced
+The discrete head is frozen. The rest of the continuous/kernel branches
+remain trainable, while the mean-free-path output stays fixed to its
+physics initialization. During this phase, the Monte Carlo kernel values
+are forced into the stored action representation so that the replay
+buffer contains Monte Carlo-consistent targets for continuous transport
+quantities.
+
+#### Phase 3 — continuous/kernel learning, teacher forcing decays out
+This phase keeps the same branch structure as Phase 2, but gradually
+reduces the kernel-level teacher forcing. In other words, Beam Weaver
+transitions from MC-driven kernel supervision to autonomous continuous
+prediction.
+
+#### Phase 4 and beyond — hybrid refinement with frozen MFP output
+The discrete head remains frozen, the mean-free-path output remains
+frozen, and the remaining continuous transport heads (energy loss, angles, secondary particle energy) 
+continue to be
+optimized.
+
+### Replay buffer and off-policy supervision
+
+Beam Weaver uses a custom n-step replay buffer. This is important for
+two reasons.
+
+First, the TD target uses an n-step return rather than a purely 1-step
+backup:
+\[
+y_t^{(n)}
+=
+r_t^{(n)}
++
+\gamma^n \left(Q_{\mathrm{target}}(s_{t+n}, a_{t+n})
+- \alpha \log \pi(a_{t+n}\mid s_{t+n})\right).
+\]
+
+Second, during teacher-forced phases, the replay buffer stores the
+**overridden Monte Carlo-consistent action** rather than the raw action
+proposed by the agent. This is a crucial design choice: the off-policy
+dataset seen by the critic and by the auxiliary physics losses is
+therefore anchored to the Monte Carlo reference during curriculum
+stages, and only later becomes fully policy-driven as teacher forcing
+is withdrawn.
+
+### RL objective during SAC training
+
+During RL, Beam Weaver does not optimize a pure SAC objective alone.
+Instead, the actor loss is multitask:
+\[
+\mathcal{L}_{\mathrm{actor}}
+=
+\mathcal{L}_{\mathrm{SAC}}
++
+\lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}},
+\]
+where
+\[
+\mathcal{L}_{\mathrm{SAC}}
+=
+\mathbb{E}\left[\alpha \log \pi(a\mid s) - Q(s,a)\right].
+\]
+
+The auxiliary physics term currently takes the form
+\[
+\mathcal{L}_{\mathrm{phys}}
+=
+\mathcal{L}_E
++
+\mathcal{L}_\theta
++
+0.4\,\mathcal{L}_{\mathrm{norm}}
++
+\mathcal{L}_N
++
+\mathcal{L}_P,
+\]
+where:
+- `\mathcal{L}_E` is the interaction-aware energy loss,
+- `\mathcal{L}_\theta` is the interaction-aware angular loss,
+- `\mathcal{L}_{\mathrm{norm}}` penalizes sine/cosine pairs that drift
+  away from unit norm,
+- `\mathcal{L}_N` is the number-of-secondaries classification loss,
+- `\mathcal{L}_P` is the interaction-type classification loss.
+
+Thus, Beam Weaver is best understood as an n-step **physics-regularized hybrid
+SAC framework** rather than a vanilla SAC implementation.
+
+### Reward design and curriculum targets
+
+In the early curriculum, the dominant reward is the discrete interaction
+reward, which compares predicted interaction frequencies against the
+reference physics mixture on an energy-binned grid. In later phases, the
+reward shifts toward transport-kernel consistency, including angular
+acceptance, angular-distribution matching, and energy-consistency terms.
+This staged reward design mirrors the staged freezing/unfreezing of the
+actor heads.
+
+### Entropy control
+
+Beam Weaver keeps SAC’s entropy-regularization mechanism and learns the
+entropy coefficient automatically. The code tracks the entropy
+coefficient, discrete entropy, and continuous entropy throughout
+training. This matters because exploration requirements differ strongly
+between the discrete curriculum stages and the later kernel-learning
+stages.
+
+In summary, Beam Weaver should not be described as a single homogeneous
+RL loop. It is a staged, simulation-supervised + off-policy RL training
+pipeline in which Monte Carlo targets are first learned directly and
+then progressively relinquished as the policy takes control.
 
 ## Repository contents
 
@@ -316,6 +553,12 @@ Choose evaluation mode and provide a fixed photon energy.
 The current evaluation path expects:
 - `hybrid_sac_model.zip`
 - `replay_buffer.pkl`
+
+## Current project status
+
+Beam Weaver's central purpose of the project was largely achieved: the code can already simulate the main photon interaction processes in a physically meaningful way and support comparison between the learned agent and the Monte Carlo reference workflow. The main remaining development task  is  **fine-tuning the angular predictions / angular sampling behavior**, which is the principal unfinished component at this time.
+
+In other words, this project is a working research prototype with a specific remaining refinement target.
 
 ## Current limitations
 
