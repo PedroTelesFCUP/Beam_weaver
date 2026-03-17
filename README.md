@@ -277,7 +277,7 @@ $$
 The auxiliary physics term currently takes the form
 
 $$
-\mathcal{L}_{\mathrm{phys}}=\mathcal{L}_E+\mathcal{L}_\theta+0.4\,\mathcal{L}_{\mathrm{norm}}+\mathcal{L}_N+\mathcal{L}_P,
+\mathcal{L}_{\mathrm{phys}}=\mathcal{L}_E+\mathcal{L}_\theta+0.4  \mathcal{L}_{\mathrm{norm}}+\mathcal{L}_N+\mathcal{L}_P,
 $$
 
 where:
@@ -377,7 +377,7 @@ $$
 The weighted target mixture is then
 
 $$
-p_{\mathrm{true},a} = \frac{\sum_b w_b \,\pi_{\mathrm{true},b,a}}{\sum_b w_b},
+p_{\mathrm{true},a} = \frac{\sum_b w_b   \pi_{\mathrm{true},b,a}}{\sum_b w_b},
 $$
 
 where $\pi_{\mathrm{true},b,a}$ is the tabulated interaction
@@ -462,13 +462,13 @@ $$
 and adds the penalty
 
 $$
-r_{\mathrm{KL},t}^{(i)}=-0.05\,\mathrm{clip}\!\left(D_{\mathrm{KL}} ,\ ,0, \, 10\right).
+r_{\mathrm{KL},t}^{(i)}=-0.05  \mathrm{clip}\!\left(D_{\mathrm{KL}}  ,0,  10\right).
 $$
 
 So the actual distribution term is
 
 $$
-r_{\mathrm{dist},t}^{(i)}\leftarrowr_{\mathrm{dist},t}^{(i)} + r_{\mathrm{KL},t}^{(i)}.
+r_{\mathrm{dist},t}^{(i)}\leftarrow r_{\mathrm{dist},t}^{(i)} + r_{\mathrm{KL},t}^{(i)}.
 $$
 
 ##### 2.3 Rayleigh-specific energy consistency
@@ -477,7 +477,7 @@ For Rayleigh scattering, the outgoing photon energy should equal the
 incoming photon energy. The code adds
 
 $$
-r_{E,\mathrm{Rayleigh},t}=-0.01\,\frac{|E_{\gamma}^{\mathrm{pred}}-E_{\gamma}^{\mathrm{in}}|}{\max(E_{\gamma}^{\mathrm{in}},10^{-6})}.
+r_{E,\mathrm{Rayleigh},t}=-0.01  \frac{|E_{\gamma}^{\mathrm{pred}}-E_{\gamma}^{\mathrm{in}}|}{\max(E_{\gamma}^{\mathrm{in}},10^{-6})}.
 $$
 
 So the Rayleigh kernel reward is
@@ -507,7 +507,7 @@ $$
 The electron consistency penalty is then
 
 $$
-r_{e,\mathrm{comp},t}=-\left[0.05\,\frac{|E_{e}^{\mathrm{pred}}-E_{e,\mathrm{MC}}|}{\max(E_{e,\mathrm{MC}},10^{-6})}+0.05\,\frac{|\theta_{e}^{\mathrm{pred}}-\theta_{e,\mathrm{MC}}|}{\pi}\right].
+r_{e,\mathrm{comp},t}=-\left[0.05  \frac{|E_{e}^{\mathrm{pred}}-E_{e,\mathrm{MC}}|}{\max(E_{e,\mathrm{MC}},10^{-6})}+0.05  \frac{|\theta_{e}^{\mathrm{pred}}-\theta_{e,\mathrm{MC}}|}{\pi}\right].
 $$
 
 So the Compton kernel reward is
@@ -527,7 +527,7 @@ $$
 The code also computes a photoelectric electron-energy penalty
 
 $$
-r_{E,\mathrm{Photo},t}=-0.01\,\frac{|E_{e}^{\mathrm{pred}}-E_{\mathrm{avail}}|}{\max(E_{\mathrm{avail}},10^{-6})},
+r_{E,\mathrm{Photo},t}=-0.01  \frac{|E_{e}^{\mathrm{pred}}-E_{\mathrm{avail}}|}{\max(E_{\mathrm{avail}},10^{-6})},
 $$
 
 but in the current implementation this term is computed but not added
@@ -545,7 +545,7 @@ For pair production, the code combines:
 The pair energy-sharing penalty is
 
 $$
-r_{E,\mathrm{pair},t}=-0.05\,\frac{|E_e^{\mathrm{pred}}+E_p^{\mathrm{pred}}-(E_{\gamma}^{\mathrm{in}}-2m_ec^2)|}{E_{\gamma}^{\mathrm{in}}-2m_ec^2}.
+r_{E,\mathrm{pair},t}=-0.05  \frac{|E_e^{\mathrm{pred}}+E_p^{\mathrm{pred}}-(E_{\gamma}^{\mathrm{in}}-2m_ec^2)|}{E_{\gamma}^{\mathrm{in}}-2m_ec^2}.
 $$
 
 The polar-angle penalty is
