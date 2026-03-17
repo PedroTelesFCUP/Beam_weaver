@@ -252,6 +252,7 @@ r_t^{(n)}
 - \alpha \log \pi(a_{t+n}\mid s_{t+n})\right).
 $$
 
+
 Second, during teacher-forced phases, the replay buffer stores the
 **overridden Monte Carlo-consistent action** rather than the raw action
 proposed by the agent. This is a crucial design choice: the off-policy
@@ -265,6 +266,7 @@ is withdrawn.
 During RL, Beam Weaver does not optimize a pure SAC objective alone.
 Instead, the actor loss is multitask:
 
+
 $$
 \mathcal{L}_{\mathrm{actor}}
 =
@@ -272,6 +274,7 @@ $$
 +
 \lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}},
 $$
+
 
 where
 
