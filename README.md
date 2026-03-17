@@ -242,6 +242,7 @@ two reasons.
 
 First, the TD target uses an n-step return rather than a purely 1-step
 backup:
+
 $$
 y_t^{(n)}
 =
@@ -263,6 +264,7 @@ is withdrawn.
 
 During RL, Beam Weaver does not optimize a pure SAC objective alone.
 Instead, the actor loss is multitask:
+
 $$
 \mathcal{L}_{\mathrm{actor}}
 =
@@ -270,7 +272,9 @@ $$
 +
 \lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}},
 $$
+
 where
+
 $$
 \mathcal{L}_{\mathrm{SAC}}
 =
@@ -278,6 +282,7 @@ $$
 $$
 
 The auxiliary physics term currently takes the form
+
 $$
 \mathcal{L}_{\mathrm{phys}}
 =
@@ -291,6 +296,7 @@ $$
 +
 \mathcal{L}_P,
 $$
+
 where:
 - `\mathcal{L}_E` is the interaction-aware energy loss,
 - `\mathcal{L}_\theta` is the interaction-aware angular loss,
