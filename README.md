@@ -138,10 +138,13 @@ interaction-specific transport kernels rather than as a single global
 regressor.
 
 The pretraining loss is a weighted sum of four terms:
+
 $$
 \mathcal{L}_{\mathrm{pre}} = w_E \mathcal{L}_E + w_\theta \mathcal{L}_\theta + w_N \mathcal{L}_N +w_P \mathcal{L}_P, 
 $$
+
 with equal default weights
+
 $$
 w_E = w_\theta = w_N = w_P = 0.25.
 $$
