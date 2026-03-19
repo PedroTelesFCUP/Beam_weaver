@@ -1432,7 +1432,7 @@ def accept_prob_rayleigh(E_in, cos_theta, data):
     k     = (E_in*1e3) / data.HC_KEV_A
     theta_rad = math.acos(np.clip(cos_theta, -1.0, 1.0))
     q     = 2 * k * math.sin(theta_rad/2)
-    F_q   = data.iaea_form_factor(q)
+    F_q   = data.coherent_form_factor(q)
     ratio = (F_q / data.F0)**2
     
     # Create a full distribution based on the kernel function IN DEGREES
