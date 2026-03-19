@@ -71,7 +71,7 @@ r0 = 2.8179e-13 # cm
 HC_KEV_A = 12.3984    # Planck*c in keV·Å (for E(keV) -> wave number in 1/Å)
 
 # Binding energies in eV for each oxygen shell:
-PHOTPHOTO_SHELL_BINDINGS = {
+PHOTO_SHELL_BINDINGS = {
     "H_K": 13.6,
     "O_K": 532.0,
     "O_L1": 40.0,
@@ -1478,7 +1478,7 @@ def accept_prob_photo(E_in, cos_theta, shell='O_K'):
         return 1.0, dist
 
     # -------- K-shell: rejection factor g = (1 − β cosθ)/2 -------------
-    Eb_MeV = PHOTPHOTO_SHELL_BINDINGS[shell] * 1e-6
+    Eb_MeV = PHOTO_SHELL_BINDINGS[shell] * 1e-6
     T      = (E_in - Eb_MeV) / mec2       # kinetic energy / m_ec²
     if T <= 0.0:
         return 0.0, np.zeros(180)         # photon below binding energy
@@ -2344,7 +2344,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # ─────────────────────────────────────────────────────────────
         # 5)  Available kinetic energy  (Q subtracted)
         # ─────────────────────────────────────────────────────────────
-        Eb_list = [PHOTPHOTO_SHELL_BINDINGS[s]*1e-6 for s in ("H_K", "O_K", "O_L1", "O_L2", "O_L3")]
+        Eb_list = [PHOTO_SHELL_BINDINGS[s]*1e-6 for s in ("H_K", "O_K", "O_L1", "O_L2", "O_L3")]
         mec2    = 0.51099895069
         if discrete_choice == 2:          # photoelectric
             Q = sum(h*eb for h, eb in zip(shell_onehot, Eb_list))
