@@ -835,7 +835,7 @@ def sample_rayleigh(E, old_dir, data):
     shell_onehot = [0, 0, 0, 0, 0]  # No shell activation for Rayleigh
     EkeV = E * 1e3  # Convert MeV to keV
     k = EkeV / data.HC_KEV_A  # Wave number in Å⁻¹
-    F0 = data.self.coherent_form_factor(0.0)
+    F0 = data.coherent_form_factor(0.0)
     
     # PENELOPE-style screening angle parameters
     a = 0.025  # Screening parameter (adjusted for water)
@@ -852,7 +852,7 @@ def sample_rayleigh(E, old_dir, data):
         q = 2 * k * math.sin(theta/2)  # in Å⁻¹
         
         # Get form factor
-        Fq = data.iaea_form_factor(q)
+        Fq = data.coherent_form_factor(q)
         ratio = (Fq / F0) ** 2
         
         # Rejection sampling with modified angular dependence
