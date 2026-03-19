@@ -3404,7 +3404,7 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
         self.cat_dist.proba_distribution(cat_logits)
         self.gauss_dist.proba_distribution(mu, log_std)
         # store the exponential rate for later sampling
-        self.mu_param = torch.clamp(mu_param, 7.0e-2, 7.50e3)  # Physical bound
+        self.mu_param = torch.clamp(mu_param, 7.0e-2, 5.00e7)  # Physical bound
 
         return self
 
@@ -3457,7 +3457,7 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
         mu_param = self.mu_param # [B]
         
         # Add safety clamping to prevent extreme rate values
-        mu_param = torch.clamp(mu_param, 7.0e-2, 7.50e3)
+        mu_param = torch.clamp(mu_param, 7.0e-2, 5.00e7)
         # Sample from exponential distribution using the clamped rate
         
         mfp_sample = torch.distributions.Exponential(mu_param).sample()  # [B]
@@ -3495,7 +3495,7 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
         logp_gauss = self.gauss_dist.log_prob(continuous_part)
     
         # Compute log probability for MFP (Exponential distribution)
-        mu_param = torch.clamp(mu_param, 7.0e-2, 7.50e3)
+        mu_param = torch.clamp(mu_param, 7.0e-2, 5.00e7)
         # log_prob of exponential is log(rate) - rate*x
         logp_mfp = torch.log(mu_param + 1e-12) - mu_param * mfp_sample
     
@@ -4454,7 +4454,7 @@ class HybridActor(Actor):
         params_no_mu = torch.tanh(raw_cont[..., :-1])
         mu_param_raw = raw_cont[..., -1:]  # Raw network output for mu <-- keep perhaps for something?
         mu_param = mu_prior 
-        mu_param = torch.clamp(mu_param, 7.0e-2, 7.50e3) 
+        mu_param = torch.clamp(mu_param, 7.0e-2, 5.00e7) 
                    # Bool[B]
         cont_params = torch.cat([params_no_mu, mu_param], dim=-1)
         
@@ -4650,7 +4650,7 @@ class HybridActor(Actor):
         # params shape [..., total_dim], so pick that last head:
         pred_rate = params[..., theta_idx]              # shape (...,)
 
-        dist.pred_rate = torch.clamp(pred_rate, 7.0e-2, 7.50e3).unsqueeze(-1)
+        dist.pred_rate = torch.clamp(pred_rate, 7.0e-2, 5.00e7).unsqueeze(-1)
         return dist
 
 
@@ -5888,7 +5888,7 @@ def run_agent_shower(
                     phi   = env._denormalize(cont[4+3*0 + 2], 'phi')
                     dir_j = rotate_direction((ux[i],uy[i],uz[i]), theta, phi)
                     # pick the shell binding exactly as MC
-                    shell_name, _ = data.oxy_shell_data.pick_shell(energies[i])
+                    shell_name, _ = data.water_shell_data.pick_shell(energies[i])
                     sec_params.append(("electron", Ej, dir_j, f"photo_{shell_name}"))
 
                 elif disc == 3:  # pair production
@@ -6294,10 +6294,20 @@ class SavePKLsCallback(BaseCallback):
                 # keep acceptance statistics for phases 2-3
                 dist_path = os.path.join(self.save_dir, f"dist_stats_{step}.pkl")
                 dist_stats = {
-                    "kl_divergences": {k: float(v) for k, v in base_env.kl_divergences.items()},
-                    "dist_rewards": {k: float(v) for k, v in base_env.dist_rewards.items()},
-                    "angle_history": {k: list(v) for k, v in base_env.agent_angle_history.items()},
-                    "target_distributions": {k: v.tolist() for k, v in base_env.target_angle_distributions.items()},
+                    "angle_kl_per_bin": {
+                        bin_idx: {k: float(v) for k, v in interactions.items()}
+                        for bin_idx, interactions in base_env.angle_kl_per_bin.items()
+                    },
+                    "angle_hist_per_bin": {
+                        bin_idx: {k: list(v) for k, v in interactions.items()}
+                        for bin_idx, interactions in base_env.angle_hist_per_bin.items()
+                    },
+                    "angle_target_per_bin": {
+                        bin_idx: {k: v.tolist() for k, v in interactions.items()}
+                        for bin_idx, interactions in base_env.angle_target_per_bin.items()
+                    },
+                    "phase": base_env.phase,
+                    "current_regime": getattr(base_env, 'current_regime', 0),
                 }
                 with open(dist_path, "wb") as f:
                     pickle.dump(dist_stats, f)
@@ -6521,30 +6531,25 @@ class OverwritingCheckpointCallback(BaseCallback):
                 dist_dict = {}
                 for k, wrapped in enumerate(self.training_env.envs):
                     base = self._unwrap(wrapped)
-                    # Use per-bin angle data for phases 2+, fallback for phases 0-1
-                    if hasattr(base, 'angle_kl_per_bin') and base.phase >= 2:
-                        # Compute average KL across all bins for each interaction
-                        avg_kl = {}
-                        for interaction in ["rayleigh", "compton", "photo", "pair"]:
-                            total_kl = sum(base.angle_kl_per_bin[bin_idx][interaction] 
-                                         for bin_idx in range(base.N_EBINS))
-                            avg_kl[interaction] = total_kl / base.N_EBINS
-                        
-                        dist_dict[k] = {
-                            "avg_kl_per_interaction": avg_kl,
-                            "phase": base.phase,
-                            "current_regime": getattr(base, 'current_regime', 0)
-                        }
-                    else:
-                        # Fallback for phases 0-1 or missing attributes
-                        dist_dict[k] = {
-                            "avg_kl_per_interaction": {"rayleigh": 0.0, "compton": 0.0, "photo": 0.0, "pair": 0.0},
-                            "phase": getattr(base, 'phase', 0),
-                            "current_regime": getattr(base, 'current_regime', 0)
-                        }
+                    dist_dict[k] = {
+                        "angle_kl_per_bin": {
+                            bin_idx: {itype: float(v) for itype, v in interactions.items()}
+                            for bin_idx, interactions in base.angle_kl_per_bin.items()
+                        },
+                        "angle_hist_per_bin": {
+                            bin_idx: {itype: list(v) for itype, v in interactions.items()}
+                            for bin_idx, interactions in base.angle_hist_per_bin.items()
+                        },
+                        "angle_target_per_bin": {
+                            bin_idx: {itype: v.tolist() for itype, v in interactions.items()}
+                            for bin_idx, interactions in base.angle_target_per_bin.items()
+                        },
+                        "phase": base.phase,
+                        "current_regime": getattr(base, 'current_regime', 0),
+                    }
                 with open("dist_stats.pkl", "wb") as f:
                     pickle.dump(dist_dict, f)
-
+                    
              # 4) env metadata (unchanged)
             env0 = self._unwrap(self.training_env.envs[0])
             meta = {
