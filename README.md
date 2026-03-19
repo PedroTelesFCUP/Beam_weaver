@@ -1,6 +1,7 @@
 # Beam Weaver
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18994135.svg)](https://doi.org/10.5281/zenodo.18994135)
+[![status](https://joss.theoj.org/papers/048f725c9d7ad766994683f478dbccd9/status.svg)](https://joss.theoj.org/papers/048f725c9d7ad766994683f478dbccd9)
 
 
 **Physics-informed n-step reinforcement learning for stochastic photon transport in water**
