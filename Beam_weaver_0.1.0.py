@@ -71,7 +71,7 @@ r0 = 2.8179e-13 # cm
 HC_KEV_A = 12.3984    # Planck*c in keV·Å (for E(keV) -> wave number in 1/Å)
 
 # Binding energies in eV for each oxygen shell:
-PHOTO_SHELL_BINDINGS = {
+PHOTPHOTO_SHELL_BINDINGS = {
     "H_K": 13.6,
     "O_K": 532.0,
     "O_L1": 40.0,
@@ -552,21 +552,21 @@ class WaterPhotoShellData:
 #        frac= (logE - lx1)/(lx2 - lx1)
 #        return math.exp(ly1 + frac*(ly2-ly1))
         
-    def pick_shell(self, E):
-        Kval  = self._loglog_interp(E, self.Egrid, self.Kvals)
-        L1val = self._loglog_interp(E, self.Egrid, self.L1vals)
-        L2val = self._loglog_interp(E, self.Egrid, self.L2vals)
-        L3val = self._loglog_interp(E, self.Egrid, self.L3vals)
-        total = Kval + L1val + L2val + L3val
-        if total < 1e-30:
-            return (None, 0.0)
-        r = random.random()*total
-        if r < Kval: return ("K", Kval)
-        r -= Kval
-        if r < L1val: return ("L1", L1val)
-        r -= L1val
-        if r < L2val: return ("L2", L2val)
-        return ("L3", L3val)
+#    def pick_shell(self, E):
+#        Kval  = self._loglog_interp(E, self.Egrid, self.Kvals)
+#        L1val = self._loglog_interp(E, self.Egrid, self.L1vals)
+#        L2val = self._loglog_interp(E, self.Egrid, self.L2vals)
+#        L3val = self._loglog_interp(E, self.Egrid, self.L3vals)
+#        total = Kval + L1val + L2val + L3val
+#        if total < 1e-30:
+#            return (None, 0.0)
+#        r = random.random()*total
+#        if r < Kval: return ("K", Kval)
+#        r -= Kval
+#        if r < L1val: return ("L1", L1val)
+#        r -= L1val
+#        if r < L2val: return ("L2", L2val)
+#        return ("L3", L3val)
     
 
 
@@ -659,7 +659,7 @@ class PenelopeLikeWaterData:
         final_csv_path: str,
         rayleigh_csv_path: str,
         density=1.0,
-        water_shell_csv="WaterPhotoShells.csv"
+        water_shell_csv="WaterPhotoShells.csv",
         coherent_ff_csv="water_fq.csv",
     ):
         # Load Rayleigh (coherent) cross-sections
@@ -704,7 +704,7 @@ class PenelopeLikeWaterData:
         self.ff_F = self.ff_F[sort_idx_ff]
         
         self.HC_KEV_A = 12.3984
-        self.F0 = self.coherent_form_factor((0.0)
+        self.F0 = self.coherent_form_factor(0.0)
     
     def partial_cs(self, E):
         c = self.loglog_interp(E, self.E_coh, self.sigma_coh) * self.density
@@ -735,7 +735,7 @@ class PenelopeLikeWaterData:
         return coh + inc + pho + ppr
         
     def pick_photo_shell(self, E):
-        name,_ = self.oxy_shell_data.pick_shell(E)
+        name,_ = self.water_shell_data.pick_shell(E)
         if name is None: 
             return None
         mapping = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
@@ -835,7 +835,7 @@ def sample_rayleigh(E, old_dir, data):
     shell_onehot = [0, 0, 0, 0, 0]  # No shell activation for Rayleigh
     EkeV = E * 1e3  # Convert MeV to keV
     k = EkeV / data.HC_KEV_A  # Wave number in Å⁻¹
-    F0 = data.self.coherent_form_factor((0.0)
+    F0 = data.self.coherent_form_factor(0.0)
     
     # PENELOPE-style screening angle parameters
     a = 0.025  # Screening parameter (adjusted for water)
@@ -941,11 +941,11 @@ def sample_photoelectric(E, old_dir, data):
     if idx is None:
         shell_onehot = [0, 0, 0, 0, 0]
         return (old_dir, E, [], "photo_none", shell_onehot)
-    shellMap = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
-    shellName = shellMap[idx]
+    shellNames = ["H_K", "O_K", "O_L1", "O_L2", "O_L3"]
+    shellName = shellNames[idx]
     shell_onehot = [0, 0, 0, 0, 0]
     shell_onehot[idx] = 1
-    Eb_eV = O_SHELL_BINDINGS[shellName]
+    Eb_eV = PHOTO_SHELL_BINDINGS[shellName]
     Eb_MeV = Eb_eV * 1e-6
     E_e = E - Eb_MeV
     if E_e <= 0:
@@ -953,7 +953,7 @@ def sample_photoelectric(E, old_dir, data):
     
     secs = []
     # Determine angular distribution based on shell
-    if shellName == ("H_K", "O_K"):
+    if shellName in ("H_K", "O_K"):
         # Sauter distribution for K-shell
         T = E_e / mec2  # Kinetic energy in units of mec²
         beta = math.sqrt(T * (T + 2)) / (T + 1)
@@ -1478,7 +1478,7 @@ def accept_prob_photo(E_in, cos_theta, shell='O_K'):
         return 1.0, dist
 
     # -------- K-shell: rejection factor g = (1 − β cosθ)/2 -------------
-    Eb_MeV = PHOTO_SHELL_BINDINGS[shell] * 1e-6
+    Eb_MeV = PHOTPHOTO_SHELL_BINDINGS[shell] * 1e-6
     T      = (E_in - Eb_MeV) / mec2       # kinetic energy / m_ec²
     if T <= 0.0:
         return 0.0, np.zeros(180)         # photon below binding energy
@@ -2344,7 +2344,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # ─────────────────────────────────────────────────────────────
         # 5)  Available kinetic energy  (Q subtracted)
         # ─────────────────────────────────────────────────────────────
-        Eb_list = [PHOTO_SHELL_BINDINGS[s]*1e-6 for s in ("H_K", "O_K", "O_L1", "O_L2", "O_L3")]
+        Eb_list = [PHOTPHOTO_SHELL_BINDINGS[s]*1e-6 for s in ("H_K", "O_K", "O_L1", "O_L2", "O_L3")]
         mec2    = 0.51099895069
         if discrete_choice == 2:          # photoelectric
             Q = sum(h*eb for h, eb in zip(shell_onehot, Eb_list))
@@ -2707,7 +2707,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         r_disc = r_p 
         
         # KERNEL REWARDS
-        Eb_list = [O_SHELL_BINDINGS[shell]*1e-6 for shell in ("K","L1","L2","L3")]
+        Eb_list = [PHOTO_SHELL_BINDINGS[shell]*1e-6 for shell in ("H_K","O_K","O_L1","O_L2","O_L3")]
         r_phi = 0 
         R_phi = 0
         r_phi_e = 0 
@@ -5816,7 +5816,7 @@ def run_agent_shower(
                     shell_name, _ = data.water_shell_data.pick_shell(energies[i])
                     idx_map = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
                     shell_onehot[idx_map[shell_name]] = 1
-                    Eb = O_SHELL_BINDINGS[shell_name] * 1e-6
+                    Eb = PHOTO_SHELL_BINDINGS[shell_name] * 1e-6
                     Q  = Eb
                 elif disc == 3:  # pair production
                     Q = 2 * mec2
@@ -6565,7 +6565,7 @@ class OverwritingCheckpointCallback(BaseCallback):
 ###############################################################################
 #  SIMPLE TRAIN DEMO
 ###############################################################################
-def train_hybrid_sac(csv_path="NIST_WaterCrossSections.csv", total_timesteps=50000):
+def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000):
     global PHASE_ENDS
     policy_file = "hybrid_sac_model.zip"
     
@@ -7044,9 +7044,11 @@ def main():
 if __name__=="__main__":
     import os
     required_files = [
-        "NIST_WaterCrossSections.csv",
-        "OxygenPhotoShells.csv",
-        "ElectronStoppingPower.csv"
+        "Final_cross_sections.csv",
+        "Rayleigh_cross_sections.csv",
+        "WaterPhotoShells.csv",
+        "water_fq.csv",
+        "water_sq.csv",
     ]
     
     missing = [f for f in required_files if not os.path.exists(f)]
