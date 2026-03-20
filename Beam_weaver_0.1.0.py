@@ -1490,7 +1490,7 @@ def accept_prob_rayleigh(E_in, cos_theta, data):
     
     for i, (angle_rad, cos_val) in enumerate(zip(angles_rad, cos_values)):
         q_i = 2 * k * math.sin(angle_rad/2)
-        F_q_i = data.iaea_form_factor(q_i)
+        F_q_i = data.coherent_form_factor(q_i)
         ratio_i = (F_q_i / data.F0)**2
         dist[i] = ratio_i * (1 + cos_val**2)/2 * np.sin(angle_rad)
     
