@@ -78,7 +78,54 @@ PHOTO_SHELL_BINDINGS = {
     "O_L2": 17.0,
     "O_L3": 17.0,
 }
-N_STEPS_RETURN = 25 
+N_STEPS_RETURN = 25
+
+# ───── ANGLE KL SETTINGS ─────────────────────────────────────────────────────
+# Number of histogram bins for per-bin KL divergence in the angle reward.
+# Must be small enough that ~50 samples can populate most bins.
+# 15 bins of 12° each → ~3 samples/bin at 50 samples, which is statistically
+# meaningful.  Using 180 bins with 50 samples left ~130 bins empty, producing
+# an irrecoverable KL ≈ 12 regardless of agent behaviour.
+N_KL_BINS = 15
+_KL_MIN_SAMPLES = 30        # require at least this many samples before KL
+_KL_COEFF       = 0.05      # weight of the KL penalty in r_dist
+_KL_CLIP        = 10.0      # upper clip for the raw KL value
+_KL_EPS         = 1e-10     # smoothing constant for empty bins
+
+def _angle_kl_divergence(agent_angles, target_dist_180):
+    """
+    Compute KL(target || agent) using N_KL_BINS bins over [0°, 180°].
+
+    Parameters
+    ----------
+    agent_angles : list[float]
+        Predicted angles in degrees.
+    target_dist_180 : np.ndarray, shape (180,)
+        The physics target distribution on a 180-point grid
+        (as returned by accept_prob_*).
+
+    Returns
+    -------
+    kl_div : float   – the raw KL divergence
+    r_kl   : float   – the clipped, weighted reward contribution
+    """
+    # --- agent empirical histogram, rebinned to N_KL_BINS ---
+    hist, edges = np.histogram(agent_angles, bins=N_KL_BINS,
+                               range=(0, 180), density=True)
+    hist = hist + _KL_EPS
+    hist = hist / hist.sum()
+
+    # --- resample the 180-point target onto the same N_KL_BINS centres ---
+    centres = 0.5 * (edges[:-1] + edges[1:])
+    target_x = np.linspace(0, 180, len(target_dist_180))
+    target_rebinned = np.interp(centres, target_x, target_dist_180)
+    target_rebinned = target_rebinned + _KL_EPS
+    target_rebinned = target_rebinned / target_rebinned.sum()
+
+    kl_div = float(np.sum(target_rebinned * np.log(target_rebinned / hist)))
+    r_kl   = -_KL_COEFF * np.clip(kl_div, 0, _KL_CLIP)
+    return kl_div, r_kl
+
 # ───── PHYSICS‑AWARE NORMALISERS ──────────────────────────────────────────────
 _ANG_DENOM = math.pi                    # scale raw angular errors → [0,1]
 _EPS_DEN   = 1e-12                      # avoid /0 throughout
@@ -1750,10 +1797,10 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # Initialize per-bin tracking for all energy bins
         for bin_idx in range(self.N_EBINS):
             self.angle_hist_per_bin[bin_idx] = {
-                "rayleigh": deque(maxlen=200),
-                "compton": deque(maxlen=200), 
-                "photo": deque(maxlen=200),
-                "pair": deque(maxlen=200)
+                "rayleigh": deque(maxlen=500),
+                "compton": deque(maxlen=500), 
+                "photo": deque(maxlen=500),
+                "pair": deque(maxlen=500)
             }
             self.angle_target_per_bin[bin_idx] = {
                 "rayleigh": np.ones(180) / 180.0,
@@ -2088,6 +2135,8 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             print("No bins found for current regime")
             return
             
+        n_display_bins = N_KL_BINS  # same binning as the KL computation
+        
         # Show comparison for bins with sufficient data
         for b_idx in regime_bins[:3]:  # Show first 3 bins to avoid spam
             e_bin_min = 10**self.ebin_edges[b_idx]
@@ -2097,8 +2146,6 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             print("-" * 60)
             
             for interaction in ["rayleigh", "compton", "photo", "pair"]:
-                # Get MC angles for this bin (we'd need to track these by bin)
-                # For now, use agent data vs target distribution
                 agent_angles = list(self.angle_hist_per_bin[b_idx][interaction])
                 target_dist = self.angle_target_per_bin[b_idx][interaction]
                 
@@ -2108,18 +2155,23 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     
                 print(f"{interaction:>10s} ({len(agent_angles):>3d} samples):")
                 
-                # Create histograms
-                agent_hist, bin_edges = np.histogram(agent_angles, bins=15, range=(0, 180))
-                target_hist = np.interp(
-                    0.5 * (bin_edges[:-1] + bin_edges[1:]),  # bin centers
-                    np.linspace(0, 180, len(target_dist)),   # target angle grid
-                    target_dist * len(agent_angles)          # scale to match agent count
-                )
+                # Create histograms with same bins as KL computation
+                agent_hist, bin_edges = np.histogram(agent_angles,
+                                                     bins=n_display_bins,
+                                                     range=(0, 180))
+                
+                # Resample 180-point target dist onto the same bins
+                centres = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+                target_x = np.linspace(0, 180, len(target_dist))
+                target_rebinned = np.interp(centres, target_x, target_dist)
+                # Scale so target sums to same total as agent
+                if target_rebinned.sum() > 0:
+                    target_hist = target_rebinned / target_rebinned.sum() * len(agent_angles)
+                else:
+                    target_hist = np.zeros(n_display_bins)
                 
                 # Find max for scaling
-                max_count = max(agent_hist.max(), target_hist.max())
-                if max_count == 0:
-                    continue
+                max_count = max(agent_hist.max(), target_hist.max(), 1)
                     
                 # Print header
                 print(f"{'Angle':<12} | {'Agent':<{width+5}} | {'Physics':<{width+5}}")
@@ -2131,10 +2183,10 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     angle_end = bin_edges[i+1]
                     
                     agent_count = agent_hist[i]
-                    target_count = int(target_hist[i])
+                    target_count = round(target_hist[i])
                     
-                    agent_bar_len = int(agent_count / max_count * width) if max_count > 0 else 0
-                    target_bar_len = int(target_count / max_count * width) if max_count > 0 else 0
+                    agent_bar_len = int(agent_count / max_count * width)
+                    target_bar_len = int(target_count / max_count * width)
                     
                     agent_bar = '█' * agent_bar_len + f" {agent_count:>3d}"
                     target_bar = '█' * target_bar_len + f" {target_count:>3d}"
@@ -2750,25 +2802,16 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     angles = list(self.angle_hist_per_bin[bin_idx][current_interaction])
                     keep_count = max(20, int(len(angles) * self.hist_decay))
                     self.angle_hist_per_bin[bin_idx][current_interaction] = deque(
-                        angles[-keep_count:], maxlen=200
+                        angles[-keep_count:], maxlen=500
                     )
                 self.angle_hist_per_bin[bin_idx][current_interaction].append(angle_degrees)
                 self.angle_target_per_bin[bin_idx][current_interaction] = target_dist
                 
-                # Compute per-bin KL divergence
+                # Compute per-bin KL divergence (rebinned)
                 angles_in_bin = list(self.angle_hist_per_bin[bin_idx][current_interaction])
-                if len(angles_in_bin) >= 20:
-                    hist, _ = np.histogram(angles_in_bin, bins=180, range=(0, 180), density=True)
-                    hist = hist + 1e-10
-                    hist = hist / np.sum(hist)
-                    
-                    target_dist_norm = target_dist + 1e-10
-                    target_dist_norm = target_dist_norm / np.sum(target_dist_norm)
-                    
-                    kl_div = np.sum(target_dist_norm * np.log(target_dist_norm / hist))
+                if len(angles_in_bin) >= _KL_MIN_SAMPLES:
+                    kl_div, r_angle_bin = _angle_kl_divergence(angles_in_bin, target_dist)
                     self.angle_kl_per_bin[bin_idx][current_interaction] = kl_div
-                    
-                    r_angle_bin = -0.05 * np.clip(kl_div, 0, 10.0)
                     r_dist += r_angle_bin
                 
                 r_dist += r_E_rayleigh
@@ -2796,25 +2839,16 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     angles = list(self.angle_hist_per_bin[bin_idx][current_interaction])
                     keep_count = max(20, int(len(angles) * self.hist_decay))
                     self.angle_hist_per_bin[bin_idx][current_interaction] = deque(
-                        angles[-keep_count:], maxlen=200
+                        angles[-keep_count:], maxlen=500
                     )
                 self.angle_hist_per_bin[bin_idx][current_interaction].append(angle_degrees)
                 self.angle_target_per_bin[bin_idx][current_interaction] = target_dist
                 
-                # Compute per-bin KL divergence
+                # Compute per-bin KL divergence (rebinned)
                 angles_in_bin = list(self.angle_hist_per_bin[bin_idx][current_interaction])
-                if len(angles_in_bin) >= 20:
-                    hist, _ = np.histogram(angles_in_bin, bins=180, range=(0, 180), density=True)
-                    hist = hist + 1e-10
-                    hist = hist / np.sum(hist)
-                    
-                    target_dist_norm = target_dist + 1e-10
-                    target_dist_norm = target_dist_norm / np.sum(target_dist_norm)
-                    
-                    kl_div = np.sum(target_dist_norm * np.log(target_dist_norm / hist))
+                if len(angles_in_bin) >= _KL_MIN_SAMPLES:
+                    kl_div, r_angle_bin = _angle_kl_divergence(angles_in_bin, target_dist)
                     self.angle_kl_per_bin[bin_idx][current_interaction] = kl_div
-                    
-                    r_angle_bin = -0.05 * np.clip(kl_div, 0, 10.0)
                     r_dist += r_angle_bin
             elif discrete_choice == 2:      # Photo
                 shell_idx  = int(np.argmax(shell_onehot))
@@ -2842,25 +2876,16 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     angles = list(self.angle_hist_per_bin[bin_idx][current_interaction])
                     keep_count = max(20, int(len(angles) * self.hist_decay))
                     self.angle_hist_per_bin[bin_idx][current_interaction] = deque(
-                        angles[-keep_count:], maxlen=200
+                        angles[-keep_count:], maxlen=500
                     )
                 self.angle_hist_per_bin[bin_idx][current_interaction].append(angle_degrees)
                 self.angle_target_per_bin[bin_idx][current_interaction] = target_dist
                 
-                # Compute per-bin KL divergence
+                # Compute per-bin KL divergence (rebinned)
                 angles_in_bin = list(self.angle_hist_per_bin[bin_idx][current_interaction])
-                if len(angles_in_bin) >= 20:
-                    hist, _ = np.histogram(angles_in_bin, bins=180, range=(0, 180), density=True)
-                    hist = hist + 1e-10
-                    hist = hist / np.sum(hist)
-                    
-                    target_dist_norm = target_dist + 1e-10
-                    target_dist_norm = target_dist_norm / np.sum(target_dist_norm)
-                    
-                    kl_div = np.sum(target_dist_norm * np.log(target_dist_norm / hist))
+                if len(angles_in_bin) >= _KL_MIN_SAMPLES:
+                    kl_div, r_angle_bin = _angle_kl_divergence(angles_in_bin, target_dist)
                     self.angle_kl_per_bin[bin_idx][current_interaction] = kl_div
-                    
-                    r_angle_bin = -0.05 * np.clip(kl_div, 0, 10.0)
                     r_dist += r_angle_bin
             else:                           # Pair
                 acc, target_dist = accept_prob(
@@ -2879,25 +2904,16 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     angles = list(self.angle_hist_per_bin[bin_idx][current_interaction])
                     keep_count = max(20, int(len(angles) * self.hist_decay))
                     self.angle_hist_per_bin[bin_idx][current_interaction] = deque(
-                        angles[-keep_count:], maxlen=200
+                        angles[-keep_count:], maxlen=500
                     )
                 self.angle_hist_per_bin[bin_idx][current_interaction].append(angle_degrees)
                 self.angle_target_per_bin[bin_idx][current_interaction] = target_dist
                 
-                # Compute per-bin KL divergence
+                # Compute per-bin KL divergence (rebinned)
                 angles_in_bin = list(self.angle_hist_per_bin[bin_idx][current_interaction])
-                if len(angles_in_bin) >= 20:
-                    hist, _ = np.histogram(angles_in_bin, bins=180, range=(0, 180), density=True)
-                    hist = hist + 1e-10
-                    hist = hist / np.sum(hist)
-                    
-                    target_dist_norm = target_dist + 1e-10
-                    target_dist_norm = target_dist_norm / np.sum(target_dist_norm)
-                    
-                    kl_div = np.sum(target_dist_norm * np.log(target_dist_norm / hist))
+                if len(angles_in_bin) >= _KL_MIN_SAMPLES:
+                    kl_div, r_angle_bin = _angle_kl_divergence(angles_in_bin, target_dist)
                     self.angle_kl_per_bin[bin_idx][current_interaction] = kl_div
-                    
-                    r_angle_bin = -0.05 * np.clip(kl_div, 0, 10.0)
                     r_dist += r_angle_bin
             # ---------------- Photon φ-uniformity reward -------------------
             if discrete_choice in (0, 1):  # Rayleigh or Compton
