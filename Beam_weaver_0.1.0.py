@@ -1032,7 +1032,7 @@ def sample_photoelectric(E, old_dir, data):
 
 def sample_pair(E, old_dir, data):
     if E<2*mec2:
-        return (old_dir,E,[],"pair_subthresh")
+        return (old_dir, E, [], "pair_subthresh", [0,0,0,0,0])
     E_avail= E-2*mec2
     def sample_epsilon(Ea):
         max_val=(Ea/2)**2 + (2/3)*(mec2)**2
@@ -1059,13 +1059,13 @@ def sample_pair(E, old_dir, data):
     secs=[("electron", eps_e, dir_e,"pair_e"),
           ("positron", eps_p, dir_p,"pair_p")]
     # Default shell onehot (no photoelectric event)
-    shell_onehot = [0,0,0,0]
+    shell_onehot = [0,0,0,0,0]
     return (np.array([0,0,0]), 0.0, secs, "pair", shell_onehot)
 
 def photon_interact(E, direction, data:PenelopeLikeWaterData):
     (coh,inc,pho,ppr,tot)= data.partial_cs(E)
     if tot<1e-30:
-        return (direction,E,[],"none", [0,0,0,0])
+        return (direction,E,[],"none", [0,0,0,0,0])
     r= random.random()*tot
     if r<coh:
         return sample_rayleigh(E,direction,data)
@@ -1736,8 +1736,8 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         sec_max = np.tile(np.array([2.0, 1.0, 1.0], dtype=np.float32), self.NsecMax)
 
         # 4) shell one-hot
-        shell_min = np.zeros(4, dtype=np.float32)
-        shell_max = np.ones(4, dtype=np.float32)
+        shell_min = np.zeros(5, dtype=np.float32)
+        shell_max = np.ones(5, dtype=np.float32)
 
 
 
@@ -1766,7 +1766,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         print(f"Last few  bin edges: {10**self.ebin_edges[-5:]}")
         self.E_grid     = E_grid.astype(np.float64)                      # shape (N_EBINS,)
         self.log_E_grid = np.log(self.E_grid)                            # log E midpoints
-        self.hist_decay = 0.995  # decay factor for EWMA histograms
+        self.hist_decay = 0.95  # decay factor for EWMA histograms
         self.steps = 0
         self.alive = True
         self.dose_tally = np.zeros(self.pdd_bins, dtype=np.float32)
@@ -1797,10 +1797,10 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # Initialize per-bin tracking for all energy bins
         for bin_idx in range(self.N_EBINS):
             self.angle_hist_per_bin[bin_idx] = {
-                "rayleigh": deque(maxlen=500),
-                "compton": deque(maxlen=500), 
-                "photo": deque(maxlen=500),
-                "pair": deque(maxlen=500)
+                "rayleigh": deque(maxlen=200),
+                "compton": deque(maxlen=200), 
+                "photo": deque(maxlen=200),
+                "pair": deque(maxlen=200)
             }
             self.angle_target_per_bin[bin_idx] = {
                 "rayleigh": np.ones(180) / 180.0,
@@ -1913,6 +1913,21 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                 if steps_in_phase2 >= timeout:
                     print(f"[DEBUG] → Phase 2 advancing from regime {self.current_regime} (time-based at step {self.global_step_count})")
                     next_r = min(self.current_regime + 1, self.num_energy_regimes - 1)
+
+                    # ── Clear stale angle data for the new regime's bins ──
+                    e_low  = self.energy_regime_boundaries[next_r]
+                    e_high = self.energy_regime_boundaries[next_r + 1]
+                    cleared = 0
+                    for b_idx in range(len(self.ebin_edges) - 1):
+                        e_min = 10**self.ebin_edges[b_idx]
+                        e_max = 10**self.ebin_edges[b_idx + 1]
+                        if e_min <= e_high and e_max >= e_low:
+                            for interaction in ["rayleigh", "compton", "photo", "pair"]:
+                                self.angle_hist_per_bin[b_idx][interaction].clear()
+                                self.angle_kl_per_bin[b_idx][interaction] = 0.0
+                            cleared += 1
+                    print(f"[DEBUG] → Cleared angle data for {cleared} bins in new regime {next_r}")
+
                     self.current_regime = next_r
 
                 if self.global_step_count % 100 == 0:
@@ -2249,7 +2264,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         if hasattr(self, 'last_shell_onehot'):
             shell_info = np.array(self.last_shell_onehot, dtype=np.float32)
         else:
-            shell_info = np.zeros(4, dtype=np.float32)
+            shell_info = np.zeros(5, dtype=np.float32)
             
         obs = np.concatenate([base_obs, cs_norm, np.array(sec_features, dtype=np.float32), shell_info])
         max_val = np.max(np.abs(obs))
@@ -2311,6 +2326,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         new_dir, Eout, real_secs, itype, shell_onehot = photon_interact(
             photon_energy_in, inc_dir, self.data
         )
+        self.last_shell_onehot = shell_onehot
         actual_int = {"rayleigh": 0, "compton": 1,
                       "photo": 2,  "pair":    3}.get(itype.split("_")[0], -1)
 
@@ -5712,7 +5728,7 @@ def run_agent_shower(
         energies = np.full(num, E_fixed, dtype=float)
         alive = np.ones(num, dtype=bool)
         steps = np.zeros(num, dtype=int)
-        shell_oh = np.zeros((num,4), dtype=float)
+        shell_oh = np.zeros((num, 5), dtype=float)
         return px,py,pz,ux,uy,uz,energies,alive,steps,shell_oh
 
     def init_record_containers(num):
@@ -5728,7 +5744,7 @@ def run_agent_shower(
     # build a single‐photon observation
     def build_obs(i):
         if not alive[i]:
-            return np.zeros(10 + 4 + 3*NsecMax + 4, dtype=np.float32)
+            return np.zeros(11 + 4 + 3*NsecMax + 5, dtype=np.float32)
         # position & direction & energy
         x_norm = 2*(px[i]-env.xmin)/(env.xmax-env.xmin) - 1
         y_norm = 2*(py[i]-env.ymin)/(env.ymax-env.ymin) - 1
@@ -5808,7 +5824,7 @@ def run_agent_shower(
             obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=model.device)
             # 1) get raw policy params (logits + gauss)
             params, _ = model.policy.actor.forward(obs_tensor)
-            shell_onehot = [0, 0, 0, 0]
+            shell_onehot = [0, 0, 0, 0, 0]
             # 3) rebuild distribution and sample
             dist    = model.policy.actor.get_action_dist_from_params(params)
             sample  = dist.sample()
