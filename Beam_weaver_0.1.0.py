@@ -87,7 +87,7 @@ N_STEPS_RETURN = 25
 # meaningful.  Using 180 bins with 50 samples left ~130 bins empty, producing
 # an irrecoverable KL ≈ 12 regardless of agent behaviour.
 N_KL_BINS = 15
-_KL_MIN_SAMPLES = 30        # require at least this many samples before KL
+_KL_MIN_SAMPLES = 15        # require at least this many samples before KL
 _KL_COEFF       = 0.05      # weight of the KL penalty in r_dist
 _KL_CLIP        = 10.0      # upper clip for the raw KL value
 _KL_EPS         = 1e-10     # smoothing constant for empty bins
@@ -3429,7 +3429,7 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
 
         # clamp for stability
         cat_logits = torch.clamp(cat_logits, -50, 50)
-        log_std    = torch.clamp(log_std,    -6, 2)
+        log_std    = torch.clamp(log_std,    -6, 0.5)
         # (optionally you could clamp theta_mfp here if needed)
 
         # build the underlying dists
@@ -4332,51 +4332,50 @@ class HybridActor(Actor):
 
             # Physics-based mean initialization
             if dominant_interaction == 0:  # Rayleigh dominant
-                means[1] = energy_frac_to_normalized(1.0)   # High photon energy retention (normalized to [-1,1])
+                means[1] = energy_frac_to_normalized(1.0)
                 means[2] = angle_to_normalized(0.1)
             elif dominant_interaction == 1:  # Compton dominant  
-                # Energy-dependent Compton behavior
-                alpha = e_val / 0.511  # E/mec2
-                typical_eps = 1.0 / (1.0 + alpha)  # Klein-Nishina peak
-                means[1] = 2.0 * typical_eps - 1.0  # Map [0,1] → [-1,1]
-                # Scattering angle: more forward at high energy
+                alpha = e_val / 0.511
+                typical_eps = 1.0 / (1.0 + alpha)
+                means[1] = 2.0 * typical_eps - 1.0
                 typical_cos_theta = 1.0 - (1.0 - typical_eps) / (typical_eps * alpha)
                 typical_theta = np.arccos(typical_cos_theta)
                 means[2] = angle_to_normalized(typical_theta)
                 electron_eps = 1.0 - typical_eps
                 means[4] = energy_frac_to_normalized(electron_eps)
-                
-                if typical_theta > 1e-6:  # Avoid division by zero for very small angles
+                if typical_theta > 1e-6:
                     tan_half_photon = np.tan(typical_theta / 2.0)
                     tan_electron = 1.0 / ((1.0 + alpha) * tan_half_photon)
                     electron_theta = np.arctan(tan_electron)
-                
                 else:
-                    # For very small photon angles, electron goes forward too
-                    electron_theta = 0.1  # Small forward angle
+                    electron_theta = 0.1
                 means[5] = angle_to_normalized(electron_theta) 
-                
             elif dominant_interaction == 2:  # Photoelectric dominant
-                means[1] = -1.0  # No outgoing photon
-                means[4] = 0.999   # Electron gets most energy
-                # Angular distribution depends on shell
-                if e_val > 0.532e-3:  # Above K-edge
-                    theta_k = np.pi/6  # ~30 degrees for K-shell
+                means[1] = -1.0
+                means[4] = 0.999
+                if e_val > 0.532e-3:
+                    theta_k = np.pi/6
                     means[5] = angle_to_normalized(theta_k)
                 else:
-                    theta_l = np.pi/2  # ~90 degrees for L-shell (more isotropic)
+                    theta_l = np.pi/2
                     means[5] = angle_to_normalized(theta_l)
             else:  # Pair production (high energy)
-                means[1] = -1.0  # No outgoing photon
-                means[4] = 0.5   # e- gets half the available energy  
-                means[7] = 0.5   # e+ gets half the available energy
-                # Small angle approximation: θ ∝ mec2/E
+                means[1] = -1.0
+                means[4] = 0.5
+                means[7] = 0.5
                 typical_angle = 0.511 / e_val
-                means[5] = np.cos(typical_angle)  # Forward-peaked
+                means[5] = np.cos(typical_angle)
                 means[8] = np.cos(typical_angle)
 
+            # ── Always set sensible photon-angle defaults for Rayleigh/Compton,
+            #    regardless of which interaction dominates this bin.
+            if means[2] == 0.0:
+                means[2] = angle_to_normalized(0.3)
+            if means[3] == 0.0:
+                means[3] = 0.0
+
             # Initialize log-stds (small but not zero - allow learning)
-            log_stds = torch.full((self.n_continuous,), -2.0, device=device)  # σ ≈ 0.14
+            log_stds = torch.full((self.n_continuous,), -2.0, device=device)
 
             # MFP parameter from physics (last element)
             mu_physics = 1.0 / self.true_mfp_mean[bin_idx] if hasattr(self, 'true_mfp_mean') else 1.0
@@ -4487,6 +4486,7 @@ class HybridActor(Actor):
         mu_param_raw = raw_cont[..., -1:]  # Raw network output for mu <-- keep perhaps for something?
         mu_param = mu_prior 
         mu_param = torch.clamp(mu_param, 7.0e-2, 5.00e7) 
+        
                    # Bool[B]
         cont_params = torch.cat([params_no_mu, mu_param], dim=-1)
         
