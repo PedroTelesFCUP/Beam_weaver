@@ -3457,33 +3457,46 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
         gauss_sample = self.gauss_dist.sample()             # [B, n_continuous]
         gauss_sample = torch.tanh(gauss_sample)
 
+        # the masking below was deprecated because it messes with the angular distributions
+        # When teacher-forcing overrides the discrete label (e.g. agent said
+        # photo but MC rolled Rayleigh), the masked -1.0 propagates as a 0°
+        # angle artifact into the Rayleigh/Compton histograms.
+        # Proper masking happens downstream in step() via _mask_cont().
+        # so 1) no need to do it here 
+        # 2) it messes with the angular distributions of Rayleigh and Compton
+        # DEPRECATED FROM HERE ONWARDS
+
+        #################################################################################        
         # 2) mask out unwanted continuous slots
-        B, C = gauss_sample.shape
-        full_mask = torch.zeros((B, C), dtype=torch.bool, device=gauss_sample.device)
+        #B, C = gauss_sample.shape
+        #full_mask = torch.zeros((B, C), dtype=torch.bool, device=gauss_sample.device)
 
         # mask energy slot for photo (2) & pair (3)
-        if C > 1:
-            mask_photo_pair = (cat_sample == 2) | (cat_sample == 3)  # [B]
-            col1 = torch.arange(C, device=gauss_sample.device) == 1
-            full_mask |= mask_photo_pair.unsqueeze(1) & col1.unsqueeze(0)
+        #if C > 1:
+        #    mask_photo_pair = (cat_sample == 2) | (cat_sample == 3)  # [B]
+        #    col1 = torch.arange(C, device=gauss_sample.device) == 1
+        #    full_mask |= mask_photo_pair.unsqueeze(1) & col1.unsqueeze(0)
         # mask θ (col 2) and φ (col 3) for the same photo/pair events
-        if C > 3:
-            col_angles = (torch.arange(C, device=gauss_sample.device) == 2) | \
-                         (torch.arange(C, device=gauss_sample.device) == 3)
-            full_mask |= mask_photo_pair.unsqueeze(1) & col_angles.unsqueeze(0)
+        #if C > 3:
+        #    col_angles = (torch.arange(C, device=gauss_sample.device) == 2) | \
+        #                 (torch.arange(C, device=gauss_sample.device) == 3)
+        #    full_mask |= mask_photo_pair.unsqueeze(1) & col_angles.unsqueeze(0)
         # mask extra-secondaries for compton (1) & photo (2)
-        mask_one_sec = (cat_sample == 1) | (cat_sample == 2)
-        if C > 4:
-            nsec = (C - 4) // 3
-            cols = []
-            for i in range(1, nsec):
-                cols += [4 + 3*i, 4 + 3*i + 1, 4 + 3*i + 2]
-            col_mask = torch.zeros(C, dtype=torch.bool, device=gauss_sample.device)
-            col_mask[cols] = True
-            full_mask |= mask_one_sec.unsqueeze(1) & col_mask.unsqueeze(0)
-
-        gauss_masked = gauss_sample.masked_fill(full_mask, -1.0)  # [B, C]
-
+        #mask_one_sec = (cat_sample == 1) | (cat_sample == 2)
+        #if C > 4:
+        #    nsec = (C - 4) // 3
+        #    cols = []
+        #    for i in range(1, nsec):
+        #        cols += [4 + 3*i, 4 + 3*i + 1, 4 + 3*i + 2]
+        #    col_mask = torch.zeros(C, dtype=torch.bool, device=gauss_sample.device)
+        #    col_mask[cols] = True
+        #    full_mask |= mask_one_sec.unsqueeze(1) & col_mask.unsqueeze(0)
+        #
+        # gauss_masked = gauss_sample.masked_fill(full_mask, -1.0)  # [B, C]
+        # MASKING OVERRIDEN (SEE ABOVE)
+        #################################################################################    
+        
+        gauss_masked = gauss_sample
         # 3) Use our direct rate prediction for MFP sampling
         # Extract the rate directly from self.mfp_rate which is already calculated in proba_distribution()
         mu_param = self.mu_param # [B]
@@ -6458,6 +6471,21 @@ class PhaseSwitchCallback(BaseCallback):
             # Reset energy curriculum when entering Phase 2
             if phase == 2:
                 print("🔄 Entering phase 2: Resetting energy curriculum to regime 0")
+                # Flush stale Phase 0-1 transitions — their rewards (r_disc)
+                # and random continuous actions would poison the Phase 2 critic.
+                # This is needed because the replay buffer has basicaly been going wild during phases 0 and 1
+                self.model.replay_buffer = NStepReplayBuffer(
+                    buffer_size=self.model.replay_buffer.buffer_size,
+                    observation_space=self.model.observation_space,
+                    action_space=self.model.action_space,
+                    device=self.model.device,
+                    n_envs=1,
+                    gamma=self.model.gamma,
+                    n_steps=N_STEPS_RETURN,
+                    optimize_memory_usage=False,
+                )
+                self.model.learning_starts = self.model.num_timesteps + 256
+                print("🗑️  Replay buffer cleared for Phase 2 (stale r_disc transitions removed)")
                 for v in self.training_env.envs:
                     base = getattr(v, "env", v)
                     base.current_regime = 0  # Start energy curriculum over
