@@ -2286,7 +2286,30 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
     def _normalise(self, val, key):
         lo, hi = self.param_ranges[key]
         return 2*(val - lo)/(hi - lo) - 1.0
-        
+
+    def _extract_local_phi(self, inc_dir, new_dir, theta):
+        """
+        Recover the local azimuthal scattering angle φ from the
+        incident and scattered direction vectors.
+        This is the inverse of rotate_direction(inc_dir, theta, phi).
+        """
+        st = math.sin(theta)
+        if st < 1e-12:
+            return 0.0  # forward/backward — φ undefined
+        ux, uy, uz = inc_dir
+        if abs(uz) < 0.9999:
+            denom = math.sqrt(1.0 - uz * uz)
+            ct = math.cos(theta)
+            cp = (uz * ct - new_dir[2]) / (denom * st + 1e-30)
+            rhs_v = new_dir[1] - uy * ct
+            sp = (rhs_v * denom / (st + 1e-30) - uy * uz * cp) / (ux + 1e-30)
+            phi = math.atan2(sp, cp)
+        else:
+            phi = math.atan2(new_dir[1], new_dir[0])
+            if uz < 0:
+                phi = math.pi - phi
+        return phi % (2 * math.pi)
+    
     def step(self, action):
         self.steps += 1
         self.global_step_count += 1
@@ -2505,7 +2528,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # record stats
         dot_val_clamped = float(np.clip(np.dot(inc_dir, new_dir), -1.0, 1.0))
         angle_radians   = math.acos(dot_val_clamped)
-        real_phi        = (math.atan2(new_dir[1], new_dir[0]) + 2*math.pi) % (2*math.pi)  
+        real_phi        = self._extract_local_phi(inc_dir, new_dir, angle_radians) 
         angle_degrees   = math.degrees(angle_radians)
 
         # Extract the correct MC angle based on interaction type
@@ -2547,8 +2570,8 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             info[f"phys_s{k}_phi"]   = 0.0
         for idx, sec in enumerate(real_secs[:self.NsecMax]):
             _, sE, sdir, _ = sec
-            th = math.acos(np.clip(sdir[2], -1.0, 1.0))
-            ph = (math.atan2(sdir[1], sdir[0]) + 2*math.pi)%(2*math.pi)
+            th = math.acos(np.clip(np.dot(inc_dir, sdir), -1.0, 1.0))
+            ph = self._extract_local_phi(inc_dir, sdir, th)
             info[f"phys_s{idx}_E"]     = sE
             info[f"phys_s{idx}_theta"] = th
             info[f"phys_s{idx}_phi"]   = ph
@@ -2623,7 +2646,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     if real_secs:
                         eE, edir = real_secs[0][1], real_secs[0][2]
                         theta_e  = math.acos(np.clip(np.dot(inc_dir, edir), -1.0, 1.0))
-                        phi_e    = (math.atan2(edir[1], edir[0]) + 2*math.pi) % (2*math.pi)
+                        phi_e    = self._extract_local_phi(inc_dir, edir, theta_e)
                         cont_store[4] = norm(eE,      'energy')
                         cont_store[5] = norm(theta_e, 'theta')
                         cont_store[6] = norm(phi_e,   'phi')
@@ -2637,7 +2660,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     if real_secs:
                         eE, edir = real_secs[0][1], real_secs[0][2]
                         theta_e  = math.acos(np.clip(np.dot(inc_dir, edir), -1.0, 1.0))
-                        phi_e    = (math.atan2(edir[1], edir[0]) + 2*math.pi) % (2*math.pi)
+                        phi_e    = self._extract_local_phi(inc_dir, edir, theta_e)
                         cont_store[4] = norm(eE,      'energy')
                         cont_store[5] = norm(theta_e, 'theta')
                         cont_store[6] = norm(phi_e,   'phi')
@@ -2651,7 +2674,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     if len(real_secs) >= 1:
                         eE, edir = real_secs[0][1], real_secs[0][2]
                         theta_e  = math.acos(np.clip(np.dot(inc_dir, edir), -1.0, 1.0))
-                        phi_e    = (math.atan2(edir[1], edir[0]) + 2*math.pi) % (2*math.pi)
+                        phi_e    = self._extract_local_phi(inc_dir, edir, theta_e)
                         cont_store[4] = norm(eE,      'energy')
                         cont_store[5] = norm(theta_e, 'theta')
                         cont_store[6] = norm(phi_e,   'phi')
@@ -2659,7 +2682,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     if len(real_secs) >= 2:
                         pE, pdir = real_secs[1][1], real_secs[1][2]
                         theta_p  = math.acos(np.clip(np.dot(inc_dir, pdir), -1.0, 1.0))
-                        phi_p    = (math.atan2(pdir[1], pdir[0]) + 2*math.pi) % (2*math.pi)
+                        phi_p    = self._extract_local_phi(inc_dir, pdir, theta_e)
                         cont_store[7] = norm(pE,      'energy')
                         cont_store[8] = norm(theta_p, 'theta')
                         cont_store[9] = norm(phi_p,   'phi')
@@ -3073,18 +3096,13 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             current_kl = 0.0
 
    
-        info = {
-            "phys_fp":   dist_real,
-            "phys_ang":  angle_radians,
-            "phys_n_sec": len(real_secs),
-            "phys_Eout": Eout,
-            "phys_proc":  PROC_NAMES.index(itype),
+        info.update({
             "r_disc":      r_disc,
             "r_kernel":    r_kernel,
             "r_E_corr":    r_E_corr,
             "r_dist":      r_dist,  
             "kl_div":      current_kl
-        }
+        })
 
         # 12) Total reward
         reward = (r_disc + r_kernel+ r_E_corr)
@@ -6468,24 +6486,10 @@ class PhaseSwitchCallback(BaseCallback):
                 b = getattr(v, "env", v)
                 b.phase = phase
 
+
             # Reset energy curriculum when entering Phase 2
             if phase == 2:
                 print("🔄 Entering phase 2: Resetting energy curriculum to regime 0")
-                # Flush stale Phase 0-1 transitions — their rewards (r_disc)
-                # and random continuous actions would poison the Phase 2 critic.
-                # This is needed because the replay buffer has basicaly been going wild during phases 0 and 1
-                self.model.replay_buffer = NStepReplayBuffer(
-                    buffer_size=self.model.replay_buffer.buffer_size,
-                    observation_space=self.model.observation_space,
-                    action_space=self.model.action_space,
-                    device=self.model.device,
-                    n_envs=1,
-                    gamma=self.model.gamma,
-                    n_steps=N_STEPS_RETURN,
-                    optimize_memory_usage=False,
-                )
-                self.model.learning_starts = self.model.num_timesteps + 256
-                print("🗑️  Replay buffer cleared for Phase 2 (stale r_disc transitions removed)")
                 for v in self.training_env.envs:
                     base = getattr(v, "env", v)
                     base.current_regime = 0  # Start energy curriculum over
