@@ -1,5 +1,5 @@
 ---
-title: 'Beam Weaver -- a physics-informed n-step Soft Actor-Critic agent for event-level photon transport in water'
+title: 'Beam Weaver - an unconventional n-step Soft-Actor Critic agent for photon transport in water'
 tags:
   - Python
   - reinforcement learning
