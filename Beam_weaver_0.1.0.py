@@ -179,12 +179,16 @@ def _set_phase(model, phase: int) -> None:
             continue  # nothing else to decide for this param
 
         # ---------------------- curriculum switch ---------------------
-        if phase < 2:  # PHASE 0–1 → train discrete only
+        if is_phys(name):
+            # Physics heads stay frozen in ALL phases after pretraining.
+            # The physics loss gradient flows through them into the
+            # features_extractor, anchoring it in physics-meaningful space.
+            p.requires_grad = False
+        elif phase < 2:  # PHASE 0–1 → train discrete + feature extractor only
             p.requires_grad = name.startswith(("features_extractor",
                                                "discrete_head"))
-        else:          # PHASE ≥2  → freeze discrete, train the rest
+        else:          # PHASE ≥2  → freeze discrete, train feat extractor + continuous
             p.requires_grad = not name.startswith("discrete_head")
-
         # ---------------------- bookkeeping ---------------------------
         if p.requires_grad:
             n_train += 1
@@ -235,7 +239,15 @@ def _set_phase(model, phase: int) -> None:
                         assert param[i].requires_grad, f"Bias element {i} was frozen by mistake!"
             print("✅  Only μ–residual mean is frozen; all other continuous_head params are trainable.")
             # ─────────────────────────────────────────────────────────────
-
+            # Sanity check: physics heads must be frozen
+            for pname, param in actor.named_parameters():
+                if is_phys(pname):
+                    assert not param.requires_grad, (
+                        f"❌ Physics param '{pname}' is trainable in Phase 2! "
+                        f"It should be frozen after pretraining."
+                    )
+            print("✅  All physics heads confirmed frozen in Phase 2.")
+            # ─────────────────────────────────────────────────────────────
             
             # grab any of the wrapped envs – all share the same window
             base_env = model.get_env().envs[0].unwrapped
@@ -1060,7 +1072,7 @@ def sample_pair(E, old_dir, data):
           ("positron", eps_p, dir_p,"pair_p")]
     # Default shell onehot (no photoelectric event)
     shell_onehot = [0,0,0,0,0]
-    return (np.array([0,0,0]), 0.0, secs, "pair", shell_onehot)
+    return (np.array([0.0, 0.0, 0.0]), 0.0, secs, "pair", shell_onehot)
 
 def photon_interact(E, direction, data:PenelopeLikeWaterData):
     (coh,inc,pho,ppr,tot)= data.partial_cs(E)
@@ -1157,28 +1169,8 @@ def sample_brem_energy(dE_rad):
         if random.random() < eps:  # Rejection sampling
             return dE_rad * eps
 
-    pos = np.array(start_pos)
-    remaining_energy = E_electron
-    total_deposit = 0.0
     
-    while remaining_energy > 0.001:  # 1 keV cutoff
-        S = stopping_power(remaining_energy, Egrid, S_vals)
-        if S <= 0:
-            break
-            
-        # Adaptive step size
-        step = max(0.001, remaining_energy / S)  # At least 0.001 cm
-        dE = S * step
-        
-        # Update position and tally
-        pos += step * direction
-        k = int((pos[2] - env.zmin) / env.dz)
-        if 0 <= k < env.pdd_bins:
-            dose_tally[k] += dE
-            
-        remaining_energy -= dE
-        total_deposit += dE
-    return total_deposit
+
 
 def transport_electron_condensed_history(
     E_electron, 
@@ -2036,7 +2028,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         pair-production angular reward, not as a sampling kernel.
         """
         E_total_approx = max(E_gamma / 2.0, mec2) # each particle ≈ half
-        return mec2_local / E_total_approx
+        return mec2 / E_total_approx
         
     def _denormalize(self, val, param_type):
         """Map from [-1,1] to physical range"""
@@ -2060,8 +2052,8 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         # zero out every histogram to match the current true_prob shape
         self.pred_hist            = np.zeros_like(self.true_prob)
         self.cum_pred_hist        = np.zeros_like(self.true_prob)
-        self.pred_hist_regime     = np.zeros_like(self.true_prob)
-        self.cum_pred_hist_regime = np.zeros_like(self.true_prob)
+        self.pred_hist_regime     = np.zeros_like(self.true_prob_regimes)
+        self.cum_pred_hist_regime = np.zeros_like(self.true_prob_regimes)
         # debug print with shape info
         print(f"📊 Histogram statistics reset at step {self.global_step_count}, "
               f"shape={self.pred_hist.shape}")
@@ -2561,7 +2553,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             "phys_fp":   dist_real,
             "phys_ang":  angle_radians,
             "phys_n_sec": len(real_secs),
-            "phys_proc":  PROC_NAMES.index(itype),
+            "phys_proc":  PROC_NAMES.index(itype.split("_")[0]),
             "phys_Eout": Eout
         })
         for k in range(self.NsecMax):
@@ -2682,7 +2674,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                     if len(real_secs) >= 2:
                         pE, pdir = real_secs[1][1], real_secs[1][2]
                         theta_p  = math.acos(np.clip(np.dot(inc_dir, pdir), -1.0, 1.0))
-                        phi_p    = self._extract_local_phi(inc_dir, pdir, theta_e)
+                        phi_p    = self._extract_local_phi(inc_dir, pdir, theta_p)
                         cont_store[7] = norm(pE,      'energy')
                         cont_store[8] = norm(theta_p, 'theta')
                         cont_store[9] = norm(phi_p,   'phi')
@@ -3245,7 +3237,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             print(f"  Phase = {self.phase}")
             # secondaries: true vs. predicted
             # inc_dir is the photon incident direction
-            inc_dir = np.array([self.u, self.v, self.w], dtype=float)
+            # inc_dir = np.array([self.u, self.v, self.w], dtype=float)
             for idx in range(self.NsecMax):
                 # true secondary
                 if idx < len(real_secs):
@@ -3567,7 +3559,10 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
 
 
     def entropy(self) -> torch.Tensor:
-        return self.cat_dist.entropy() + self.gauss_dist.entropy()
+        # Entropy of Exponential(rate) = 1 + ln(1/rate) = 1 - ln(rate)
+        mu_param = torch.clamp(self.mu_param, 7.0e-2, 5.00e7)
+        exp_entropy = 1.0 - torch.log(mu_param + 1e-12)
+        return self.cat_dist.entropy() + self.gauss_dist.entropy() + exp_entropy
 
     def actions_from_params(self, params: torch.Tensor, deterministic=False) -> torch.Tensor:
         self.proba_distribution(params)
@@ -3705,9 +3700,6 @@ class NStepSAC(SAC):
                                  replay_data.actions)          # (B,1)
             q1 = q1.squeeze(-1);   q2 = q2.squeeze(-1)          # (B,)
 
- 
-
-            lambda_aux = 0.1  
 
             critic_loss = F.mse_loss(q1, target_q) + F.mse_loss(q2, target_q) 
             self.tb_writer.add_scalar("critic_loss", critic_loss.cpu().item(), self.num_timesteps) 
@@ -3880,10 +3872,9 @@ class NStepSAC(SAC):
                     discrete_entropy = -(p_pol * torch.log(p_pol + 1e-12)).sum(dim=1).mean()
     
                     # Continuous entropy (from the Gaussian components)
-                    # This is approximate since we're assuming logp_pi contains both components
-                    continuous_entropy = -logp_pi.mean() - discrete_entropy
-    
-                    # Log to TensorBoard
+                    dist_for_ent = self.actor.get_action_dist_from_params(params)
+                    continuous_entropy = dist_for_ent.gauss_dist.entropy().mean()                   # Log to TensorBoard
+                    
                     self.tb_writer.add_scalar("entropy/discrete", discrete_entropy.item(), self.num_timesteps)
                     self.tb_writer.add_scalar("entropy/continuous", continuous_entropy.item(), self.num_timesteps)
                     self.tb_writer.add_scalar("entropy/target", self.target_entropy, self.num_timesteps)
@@ -4000,9 +3991,7 @@ class HybridActor(Actor):
         n_bins = len(self.ebin_edges) - 1        # guaranteed ≥ 1 now
         print("[HybridActor] n_bins =", n_bins, flush=True)
 
-        self.register_buffer('bin_edges', torch.from_numpy(self.ebin_edges).to(device))
-        n_bins = len(self.ebin_edges) - 1
-        print(n_bins)
+        # (duplicate register_buffer removed — already registered at line 3998)
         self.true_prob = np.asarray(true_prob, dtype=np.float32)
         self.true_mfp_mean = np.asarray(true_mfp_mean, dtype=np.float32)
         self.energy_regime_boundaries = np.asarray(energy_regime_boundaries, dtype=np.float32)
@@ -5536,7 +5525,10 @@ def generate_mc_dataset(
         angle = math.acos(cos_t)
         sin_ang = math.sin(angle)
         cos_ang = math.cos(angle)
-        proc_idx = PROC_NAMES.index(itype) if itype in PROC_NAMES else -1
+        base_itype = itype.split("_")[0]
+        if base_itype not in PROC_NAMES:
+            continue  # skip edge-case interactions (photo_none, pair_subthresh, etc.)
+        proc_idx = PROC_NAMES.index(base_itype)
         # build phys_targets: [dist, angle, Eout, n_sec, sec0_E, θ, φ, ...]
         phys = [dist_real, sin_ang, cos_ang, Eout, len(secs)]
         for k in range(NsecMax):
@@ -5782,14 +5774,16 @@ def run_agent_shower(
         z_norm = (pz[i]-env.zmin)/(env.zmax-env.zmin)
         E_val = max(energies[i], 1e-3)
         E_norm = (E_val - 0.001)/(1.001-0.001)
-        logE   = np.clip(math.log10(E_val), -3.0, 1.0)
+        logE_low  = math.log10(env.E_min)
+        logE_high = math.log10(env.E_max)
+        logE   = np.clip(math.log10(max(E_val, env.E_min)), logE_low, logE_high)
         u,v,w  = ux[i], uy[i], uz[i]
         stepf  = steps[i]/max_steps
         local_step_norm = (steps[i] % env.n_multi) / env.n_multi
         # --- mean‑free‑path normalised term (matches env._get_obs) ---
         mu        = data.mu_total(E_val)               # linear attenuation coeff
         mfp       = 1.0 / (mu + 1e-12)                 # mean free path (cm)
-        mfp_norm  = np.clip((mfp - 1.3333e-4) / (1.428e1 - 1.3333e-4), 0.0, 1.0)
+        mfp_norm  = np.clip((mfp - 1.4498361e-4) / (1.41654804539e1 - 1.4498361e-4), 0.0, 1.0)
 
         base   = np.array([x_norm,y_norm,z_norm,
                            E_norm,logE,
@@ -5799,10 +5793,12 @@ def run_agent_shower(
                            mfp_norm
         ], dtype=np.float32)
 
-        # cross‐sections
+        # cross‐sections — must match _get_obs: log-space normalisation
         coh,inc,pho,ppr,_ = data.partial_cs(E_val)
-        tot = coh+inc+pho+ppr+1e-12
-        cs_norm = np.array([coh,inc,pho,ppr],dtype=np.float32)/tot
+        cs_raw = np.array([coh, inc, pho, ppr], dtype=np.float32) + 1e-30
+        log_cs = np.log10(cs_raw)
+        cs_norm = (log_cs - env.LOG_MIN) / (env.LOG_MAX - env.LOG_MIN)
+        cs_norm = np.clip(cs_norm, 0.0, 1.0)
 
         # secondary history
         feats = []
@@ -5845,6 +5841,7 @@ def run_agent_shower(
             coords_y[i].append(py[i])
             coords_z[i].append(pz[i])
 
+        per_photon_sec_params = [[] for _ in range(curr)] 
         global_step = 0
         while np.any(alive) and global_step<max_steps:
             global_step+=1
@@ -5855,13 +5852,14 @@ def run_agent_shower(
             obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=model.device)
             # 1) get raw policy params (logits + gauss)
             params, _ = model.policy.actor.forward(obs_tensor)
-            shell_onehot = [0, 0, 0, 0, 0]
+            
             # 3) rebuild distribution and sample
             dist    = model.policy.actor.get_action_dist_from_params(params)
             sample  = dist.sample()
             actions = sample.cpu().detach().numpy()
             for batch_i, i in enumerate(idxs):
                 steps[i]+=1
+                shell_onehot = [0, 0, 0, 0, 0]
                 act = actions[batch_i]
                 disc = int(act[0])
                 process_names = ["rayleigh", "compton", "photo", "pair"]
@@ -5911,19 +5909,13 @@ def run_agent_shower(
                         th_pred = math.pi/2
                         ph_pred = 0.0
                 else:
-                    # Pair production: two secondaries
-                    raw = [
-                        max(0.0, env._denormalize(cont[1], 'energy')),
-                        max(0.0, env._denormalize(cont[4], 'energy')),
-                        max(0.0, env._denormalize(cont[7], 'energy'))
-                    ]
-                    total = sum(raw)
-                    if total > 0.0:
-                        fracs = [r/total for r in raw]
-                    else:
-                        fracs = [1/3,1/3,1/3]
+                    # Pair production: two secondaries (no scattered photon)
+                    raw_e = max(0.0, env._denormalize(cont[4], 'energy'))
+                    raw_p = max(0.0, env._denormalize(cont[7], 'energy'))
+                    s = raw_e + raw_p or 1.0
                     E_out        = 0.0  # no photon
-                    sec_energies = [fracs[1]*avail_E, fracs[2]*avail_E]
+                    sec_energies = [(raw_e / s) * avail_E, (raw_p / s) * avail_E]
+                    fracs = [0.0, raw_e / s, raw_p / s]  # keep fracs[1], fracs[2] for downstream
                     th_pred = math.pi/2
                     ph_pred = 0.0
                 # ——— end energy‐split ———
@@ -5938,7 +5930,7 @@ def run_agent_shower(
 
                 elif disc == 1:  # compton
                 # one predicted recoil electron
-                    Ej    = fracs[1] * photon_energy_in  # or however you allocated it
+                    Ej    = fracs[1] * avail_E  # or however you allocated it
                     theta = env._denormalize(cont[4+3*0 + 1], 'theta')
                     phi   = env._denormalize(cont[4+3*0 + 2], 'phi')
                     dir_j = rotate_direction((ux[i],uy[i],uz[i]), theta, phi)
@@ -6009,7 +6001,8 @@ def run_agent_shower(
                         )
 
                 inters[i].append(rec)
-                shell_oh[i] = shell_onehot
+                shell_oh[i] = list(shell_onehot)
+                per_photon_sec_params[i] = list(sec_params)  # store per photon
 
                 # advance state
                 ux[i],uy[i],uz[i] = new_dir
@@ -6033,7 +6026,7 @@ def run_agent_shower(
             })
             all_secs   .extend(sec_lists[i])
             all_inters .extend(inters[i])
-            recent_secs[i].extend(sec_params)
+            recent_secs[i].extend(per_photon_sec_params[i])
 
         start_idx += curr
 
@@ -6666,9 +6659,10 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
     )
     
     # If the policy file exists, load it. Otherwise, start training from scratch.
-    if os.path.exists(policy_file):
+    is_resume = os.path.exists(policy_file)
+    if is_resume:
         print(f"Existing policy file '{policy_file}' detected. Loading model to continue training.")
-
+        
         model = NStepSAC.load(
             "hybrid_sac_model.zip",  
             env=env,
@@ -6862,10 +6856,23 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
 
         _set_phase(model, 0)      # only done on a brand-new network
     physics_ckpt = "physics_head_pretrained.pth"
-    if os.path.exists(physics_ckpt):
-        load_physics_head(model.policy.actor, physics_ckpt)
+    if not is_resume:
+        # Fresh start only: load pretrained physics head into the newly created model
+        if os.path.exists(physics_ckpt):
+            load_physics_head(model.policy.actor, physics_ckpt)
+        else:
+            print("⚠️  No pre-trained physics head found; training from scratch.")
     else:
-        print("⚠️  No pre-trained physics head found; training from scratch.") 
+        # Resume: the .zip checkpoint already contains the evolved physics head
+        # and feature extractor weights. Overwriting them with the pretrained
+        # state would destroy co-adapted representations and spike all losses.
+        print("ℹ️  Resuming — physics head weights preserved from checkpoint.")   
+
+    # ── Temporary verification — remove after confirming Fix A works ──
+    with torch.no_grad():
+        sample_weight = model.policy.actor.features_extractor.block1[0].weight[0, :5]
+        print(f"[VERIFY] Feature extractor sample weights: {sample_weight}")
+    # ── End temporary verification ──
 
     ckpt_cb = OverwritingCheckpointCallback(save_freq=1000, save_path=policy_file, verbose=1)
     # === NEW: full state backup every 10k steps ===
