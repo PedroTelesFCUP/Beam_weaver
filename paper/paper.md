@@ -63,6 +63,8 @@ Beam Weaver is organised around three components, currently distributed as a sin
 
 ![Two-stage training pipeline. Stage I pretrains the physics branch with supervised learning on MC labels. Stage II is a five-phase SAC curriculum: discrete interaction learning (Phases 0--1) followed by continuous kernel learning (Phases 2+), each with linearly decaying teacher forcing and phase-specific reward signals.\label{fig:training}](fig_training.pdf)
 
+**Acceptance kernels as reward signals.** Beam Weaver repurposes the acceptance functions from Monte Carlo rejection sampling directly as RL reward signals. When the agent proposes a scattering angle and energy for a given interaction, the code evaluates the same process-specific acceptance probability $A_i(E_{\mathrm{in}}, E_{\mathrm{out}}, \theta)$ that the MC sampler uses internally---Klein--Nishina for Compton, form-factor weighting for Rayleigh, Sauter for photoelectric---and converts it to a log-likelihood-ratio reward $r_{\mathrm{dist}} = \log\bigl((A_i + \varepsilon) / (1/180 + \varepsilon)\bigr)$. The agent is therefore learning to reproduce the output of the MC rejection sampler without executing the rejection loop, turning a stochastic accept--reject process into a learned policy. No surrogate loss needs to be designed: the MC code's own sampling criterion becomes the training signal.
+
 # Current limitations
 
 The current release is intentionally narrow in scope: a monolithic single-script codebase, restricted to a 10 × 10 cm² monoenergetic photon beam incident perpendicularly on a homogeneous 100 × 100 × 100 cm³ water phantom. 
