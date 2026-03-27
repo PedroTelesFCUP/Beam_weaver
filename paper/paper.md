@@ -24,31 +24,38 @@ bibliography: paper.bib
 
 # Summary
 
-Beam Weaver is an open-source Python framework for learning event-by-event photon transport in a homogeneous water phantom using a physics-informed hybrid Soft Actor-Critic (SAC) agent. It combines three tightly coupled components. A custom python Monte Carlo (MC) photon simulator using PENELOPE-derived cross-section tables for Rayleigh, Compton, and pair production [@penelope2018], and EPDL data for the photoelectric cross-sections [@cullen1997epdl, which can also perform condensed history transport for electrons. The second component is a Gymnasium-compatible reinforcement-learning (RL) environment that casts photon transport as a sequential decision problem, and the third consisting of a custom multi-head SAC that containes a pre-trainable physics head, which is coupled with a discrete head for interaction types and and a continuous head for continuous transport quantities---free path, scattering geometry, outgoing energy, and secondary-particle properties. Unlike standard SAC [@haarnoja2018sac], Beam Weaver uses $n$-step bootstrapped returns [@suttonbarto2018], a five-phase curriculum with scheduled teacher forcing, and physics-informed pretraining. \autoref{fig:architecture} shows the full actor-critic architecture.
+Beam Weaver is an open-source Python framework for learning event-by-event photon transport in a homogeneous water phantom using a physics-informed hybrid Soft Actor-Critic (SAC) agent. It combines three tightly coupled components. A custom python Monte Carlo (MC) photon simulator using PENELOPE-derived cross-section tables for Rayleigh, Compton, and pair production [@penelope2018], and EPDL data for the photoelectric cross-sections [@cullen1997epdl], which can also perform condensed history transport for electrons. The second component is a Gymnasium-compatible reinforcement-learning (RL) environment that casts photon transport as a sequential decision problem, and the third consisting of a custom multi-head SAC that containes a pre-trainable physics head,  coupled with a discrete head for interaction types and and a continuous head for continuous transport quantities, like free path, scattering geometry, outgoing energy, and secondary-particle properties. Unlike standard SAC [@haarnoja2018sac], Beam Weaver uses $n$-step bootstrapped returns [@suttonbarto2018], a five-phase curriculum with scheduled teacher forcing, and physics-informed pretraining. \autoref{fig:architecture} shows the full actor-critic architecture.
 
 ![Beam Weaver actor-critic architecture. The observation vector feeds a shared residual MLP that branches into a discrete head (interaction type), continuous heads (angles, energies, secondaries), and a pretrained physics branch. The mean free path is hard-coded from tabulated cross sections. A curriculum wrapper selects the phase-appropriate reward, and teacher forcing overwrites replay-buffer actions during early phases.\label{fig:architecture}](fig_architecture.pdf)
 
 # Statement of need
 
-High-fidelity radiation transport relies on well-established MC codes such as PENELOPE, Geant4, and EGSnrc [@penelope2018; @agostinelli2003geant4; @kawrakow2000egsnrc], and this constitutes the state-of-the art in particle transport coding, where RL has not yet entered in full mod. Parallel to this, RL libraries like Stable-Baselines3 [@raffin2021stable] provide algorithmic infrastructure but no radiation-physics environments. Existing ML approaches to accelerating radiation transport focus on surrogate models for aggregate observables---dose maps, depth-dose curves, or MC denoising---rather than on learning the event-level transport process itself.
+State-of-the-art radiation transport relies on well-established MC codes such as PENELOPE, Geant4, and EGSnrc [@penelope2018; @agostinelli2003geant4; @kawrakow2000egsnrc]. Currently, Monte Carlo techniques are pervasive in all applications where reliable dosimetry is needed, being, in many cases, the reference dosimetry calculator. This is a computational field in which reinforcement learning (RL) has not yet entered in full force. Most existing applications of machine learning to radiation transport operate downstream of the MC simulation itself: denoising low-photon MC outputs, training surrogate networks to predict final dose maps from beam parameters, or accelerating specific bottlenecks such as source modelling or plan optimization---in all cases treating the MC transport engine as a fixed black box whose outputs are to be approximated or post-processed, rather than questioning whether the event-by-event transport process can itself be learned. Parallel to this, RL libraries like Stable-Baselines3 [@raffin2021stable] provide robust algorithmic infrastructure but no radiation-physics environments, transport samplers, or validation workflows tailored to stochastic particle transport. 
 
-Beam Weaver addresses this question: can an RL agent learn to reproduce the stochastic sequence of interaction decisions that constitutes a photon history? The agent observes photon state variables and cross-section data, then predicts the next interaction class together with continuous outcomes that can be compared against MC references process by process. The great advantage is precisely this one, MC can produce an arbitrarily large number of observables to train the agent, making it an excellent candidate for RL approaches.
+Beam Weaver addresses a different question: can a reinforcement-learning agent learn to reproduce the stochastic sequence of interaction decisions that constitutes a photon history, not merely predict downstream aggregate quantities?
 
-The release bundles the complete workflow: MC data generation, physics-head pretraining, curriculum-based SAC training, checkpointing, and evaluation through interaction statistics, secondary-particle summaries, tracks, and percentage depth-dose curves---making it an inspectable research pipeline, not merely a model checkpoint.
+The agent observes photon state variables and cross-section data, then predicts the next interaction class together with continuous outcomes that can be compared against MC references process by process. This event-level formulation exploits a distinctive property of radiation transport as an RL problem: the MC simulator serves simultaneously as environment, teacher, and evaluation oracle, capable of generating an arbitrarily large and physically exact training signal at every level of detail, from individual scattering angles to aggregate depth-dose curves,making photon transport an unusually well-suited domain for reinforcement learning, where ground truth is typically expensive or unavailable. 
+
+The current release (Beam Weaver 0.1.0) bundles the complete workflow needed to exploit this property: MC data generation, physics-head pretraining, curriculum-based SAC training, checkpointing, and evaluation through interaction statistics, secondary-particle summaries, particle tracks, physics sanity constraints and percentage depth-dose curves. It therefore provides a concrete, end-to-end answer path to the question of whether RL can learn stochastic transport, rather than merely reporting a trained model in isolation.
 
 # State of the field
 
-Established MC codes provide validated photon transport across broad material and geometry classes [@penelope2018; @agostinelli2003geant4; @kawrakow2000egsnrc]. In its current formulation, Beam Weaver  uses a deliberately narrow setting---a $10 \times 10$~cm$^2$ beam on a $100 \times 100 \times 100$~cm$^3$ water phantom, to study whether a SAC agent can learn event-level transport from a physics-based simulator.
 
-SAC was chosen because its maximum-entropy formulation produces inherently stochastic policies (physically appropriate when multiple interactions carry non-zero probability), it is off-policy (essential for learning from teacher-forced replay buffers), it handles continuous action spaces natively, and its automatic entropy tuning adapts exploration across curriculum phases with different natural entropy scales.
+One of the most active area of application of RL techniques  is in MC acceleration through post-processing: deep learning models are trained to denoise low-photon MC dose distributions to the statistical quality of high-photon runs, achieving speedups of one to two orders of magnitude while leaving the underlying transport engine untouched. Representative work includes MCDNet for intensity-modulated radiotherapy [@peng2019mcdnet], DeepMC for MR-guided beamlet dose calculation [@neph2021deepmc], and GhostUNet for carbon-ion plan verification [@zhang2023ghostunet]. These methods treat the MC simulation as a black box and operate entirely on its scalar output (the dose map), with no representation of individual particle histories.
+
+Another field of application is in  treatment plan optimization: selecting beam orientations, optimizing fluence maps, or tuning planning parameters. A recent comprehensive review [@wang2024drl_review] catalogues applications to IMRT, VMAT, brachytherapy, and stereotactic treatments across multiple disease sites. In these applications, the RL agent operates on clinical planning objectives (dose-volume constraints, organ-at-risk sparing) rather than on the physics of particle transport itself.
+
+A third direction uses surrogate neural networks to predict aggregate dosimetric quantities directly from beam and geometry parameters---for example, training U-Nets or GANs on Geant4-generated dose volumes to bypass MC entirely for specific clinical geometries. NeuralRTE [@neuralrte2025] extends this idea to photon transport in turbid media for biomedical optics, learning forward light propagation through scattering tissue-like media.
+
+In other words, none of these have attempted what Beam Weaver proposes, which is to learn the event-level transport process itself: the sequential chain of interaction type selection, scattering angle sampling, energy partitioning, and secondary particle generation that constitutes a single photon history. All existing approaches either post-process MC outputs, optimise clinical objectives that sit above the transport layer, or learn input-output mappings that skip the transport entirely. Beam Weaver occupies this gap. Rather than predicting a dose map or denoising a noisy one, it trains an RL agent to reproduce the stochastic decision sequence that a MC code executes at every interaction site---making the transport process itself the learned object.
 
 # Software design
 
 Beam Weaver is organised around three components, currently distributed as a single Python research script with accompanying physics tables and metadata.
 
-**MC reference simulator.** A compact Python simulator samples Rayleigh, Compton, photoelectric, and pair-production interactions using PENELOPE and EPDL-derived cross sections [@penelope2018], [@cullen1997epdl], Hubbell incoherent scattering functions and coherent form factors [@hubbell1975]. Secondary electrons are handled via simplified condensed-history transport or local energy deposition.
+**MC reference simulator.** A compact Python MC simulator samples Rayleigh, Compton, photoelectric, and pair-production interactions using PENELOPE and EPDL-derived cross sections [@penelope2018], [@cullen1997epdl], Hubbell incoherent scattering functions and coherent form factors [@hubbell1975]. Secondary electrons are handled via simplified condensed-history transport or immediate local energy deposition.
 
-**RL environment.** A Gymnasium-compatible environment casts each photon history as an episode. Observations encode photon position, energy, direction, cross sections, and shell context. The hybrid action space combines a discrete interaction choice with continuous outputs for free path, scattering angles, energies, and secondary kinematics. The environment exposes energy-binned interaction histograms, per-process angular distributions, secondary summaries, and depth-dose diagnostics.
+**RL environment.** A Gymnasium-compatible environment casts each photon history as an episode. Observations encode photon position, energy, direction, cross sections, and photoelectric shell context. The hybrid action space combines a discrete interaction choice with continuous outputs for free path, scattering angles, energies, and secondary kinematics. The environment exposes energy-binned interaction histograms, per-process angular distributions, secondary summaries, and depth-dose diagnostics.
 
 **Custom SAC stack.** Built on Stable-Baselines3 [@raffin2021stable] and PyTorch [@paszke2019pytorch], the SAC stack extends standard SAC with: a multi-head policy (discrete head, continuous heads, pretrained physics branch); $n$-step replay with bootstrapped critic targets; a multitask actor loss $\mathcal{L}_{\mathrm{actor}} = \mathcal{L}_{\mathrm{SAC}} + \lambda_{\mathrm{phys}}\mathcal{L}_{\mathrm{phys}}$; and hard-coded mean free paths from tabulated cross sections (a physics prior ensuring correct attenuation by construction).
 
@@ -58,55 +65,23 @@ Beam Weaver is organised around three components, currently distributed as a sin
 
 # Current limitations
 
-The codebase is monolithic (a single Python script), the geometry is restricted to a homogeneous water phantom, angular distribution fine-tuning for continuous heads remains the principal unfinished component, and validation is at proof-of-concept level. Future work will modularise the code, expand material and geometry support, and complete angular convergence across all energy regimes.
+The current release is intentionally narrow in scope: a monolithic single-script codebase, restricted to a 10 × 10 cm² monoenergetic photon beam incident perpendicularly on a homogeneous 100 × 100 × 100 cm³ water phantom. 
 
 # Research impact statement
 
 Beam Weaver's immediate impact is as an openly archived, reproducible baseline for research on learned photon transport. The complete experimental workflow---MC data generation, physics-head pretraining, curriculum-based RL training, checkpointing, and process-level evaluation---is publicly inspectable, lowering the barrier for researchers who want to benchmark alternative policies, reward functions, or action parameterisations without rebuilding a transport-and-training pipeline from scratch. Even in its current state, the release captures a distinctive architecture, training regime, and transport-specific evaluation strategy that would otherwise remain unavailable. The Zenodo archive and public repository make the software citable, inspectable, and reusable [@beamweaver_software].
 
-# Preliminary results
 
-The results presented here are from a partially trained agent
-evaluated at 1 MeV incident photon energy on a 100 × 100 × 100 cm³
-water phantom. At the time of evaluation, the agent had completed the
-full discrete interaction curriculum (Phases 0--1) and was partway
-through the continuous kernel curriculum (Phase 2, energy regime 2 of
-16, covering 5--10 keV). The continuous transport heads had therefore
-received supervised angular training only in the low-energy
-photoelectric-dominated regime; all behaviour at higher energies
-reflects the physics-seeded initialization plus the RL reward signal,
-without direct angular curriculum exposure. These results should
-accordingly be interpreted as a progress snapshot rather than a
-converged validation.
+# Physics enforcement mechanisms
 
-The evaluation compared 10 000 photon histories generated by the
-internal MC reference simulator against 10 000 histories generated by
-the agent, both using condensed-history electron transport for
-secondary energy deposition. Table 1 summarizes the key metrics.
-
-**Table 1.** Evaluation summary at 1 MeV (10 000 photon histories).
-
-| Metric                          |       MC |    Agent |    Ratio |
-|:--------------------------------|---------:|---------:|---------:|
-| Total interactions              |  137 701 |   66 562 |     0.48 |
-| Mean track length (interactions)|     13.8 |      6.7 |     0.48 |
-| Total dose deposited (MeV)     | 10 689.7 |  8 823.1 |    0.825 |
-| Normalised PDD L₂ distance     |      --- |      --- |   0.226  |
-| Compton fraction                |    0.922 |    0.886 |     0.96 |
-| Rayleigh fraction               |    0.033 |    0.025 |     0.74 |
-| Photoelectric fraction          |    0.044 |    0.089 |     2.00 |
-| Compton mean angle (°)          |     64.7 |     53.5 |      --- |
-| Rayleigh mean angle (°)         |      7.2 |     53.0 |      --- |
-| Simulation time (s)             |    464.4 |    151.5 |   3.1×   |
-
-## Physics enforcement mechanisms
-
-Before discussing the evaluation results, it is worth summarizing the
-structural constraints that are hard-wired into the agent's action
-interpretation, as distinct from the soft reward signals described in
-the reward design section. These constraints ensure that certain
-physical conservation laws hold exactly in every agent-generated event,
+The agent's action
+interpretation is structurally constrained in order to ensure physical sanity (energy conservation, kinetic agreement, number of secondary particles produced) in every agent-generated event,
 regardless of what the policy network outputs.
+
+This should be seen as distinct from the soft reward signals described in
+the reward design section. 
+
+At evaluation time these constraints are switched off so in principle the agent should have been able to learn the physics by itself.
 
 **Energy conservation.** The agent's continuous energy outputs are not
 interpreted as absolute energies. Instead, they are treated as relative
@@ -167,14 +142,71 @@ training. This ensures that the spatial distribution of interaction
 sites matches the reference transport regardless of other policy
 outputs.
 
-These hard constraints collectively guarantee that every agent-generated
-event satisfies energy conservation, produces the correct number of
-secondary particles for the selected interaction type, respects
-kinematic thresholds, and samples interaction sites from the correct
-spatial distribution. The remaining degrees of freedom---interaction
+The remaining degrees of freedom---interaction
 type selection, scattering angles, energy partition ratios, and
 secondary-particle directions---are learned through the reward signal
 and constitute the quantities evaluated below.
+
+
+
+# Preliminary results
+
+
+The results presented here are from a partially trained agent
+evaluated at 1 MeV incident photon energy on a
+$100 \times 100 \times 100$~cm$^3$ water phantom. At the time of
+evaluation, the agent had completed the full discrete interaction
+curriculum (Phases 0--1) and the full continuous kernel curriculum
+(Phase 2), covering all 16 energy regimes from 1 keV to 1 MeV.
+Phase 3 (teacher-forcing decay for continuous heads) had not yet
+begun. These results should accordingly be interpreted as a progress
+snapshot in which the continuous heads have seen supervised examples
+across the full energy range but have not yet transitioned to
+autonomous prediction.
+
+Training was performed on a single NVIDIA RTX 3060 (12 GB VRAM)
+rented through Vast.ai, using a Jupyter notebook environment with
+PyTorch and CUDA 12.6. The host machine was equipped with an Intel
+Xeon E5-2696 v3 processor and 64.5 GB of system memory. The full
+training run through Phase 2 (100 000 timesteps across all curriculum
+phases) completed in approximately 24 hours at a rental cost of
+approximately \$1.27 USD. Table 1 summarises the training hardware.
+
+**Table 1.** Training hardware and cost.
+
+| Component       | Specification                          |
+|:----------------|:---------------------------------------|
+| GPU             | NVIDIA RTX 3060 (12 GB VRAM)           |
+| GPU compute     | 12.2 TFLOPS (FP32)                     |
+| CPU             | Intel Xeon E5-2696 v3 (18 cores)       |
+| System memory   | 64.5 GB                                |
+| Platform        | Vast.ai cloud rental                   |
+| Rental cost     | \$0.053/hr (~\$1.27 total)             |
+| Training time   | ~24 hours (Phases 0--2, 100k timesteps)|
+| Software        | PyTorch, CUDA 12.6, Jupyter Notebook   |
+
+The evaluation compared 10 000 photon histories generated by the
+internal MC reference simulator against 10 000 histories generated by
+the agent, both using condensed-history electron transport for
+secondary energy deposition. Table 2 summarizes the key metrics.
+
+**Table 2.** Evaluation summary at 1 MeV (10 000 photon histories).
+
+| Metric                          |       MC |    Agent |    Ratio |
+|:--------------------------------|---------:|---------:|---------:|
+| Total interactions              |  137 701 |   66 562 |     0.48 |
+| Mean track length (interactions)|     13.8 |      6.7 |     0.48 |
+| Total dose deposited (MeV)     | 10 689.7 |  8 823.1 |    0.825 |
+| Normalised PDD L₂ distance     |      --- |      --- |   0.226  |
+| Compton fraction                |    0.922 |    0.886 |     0.96 |
+| Rayleigh fraction               |    0.033 |    0.025 |     0.74 |
+| Photoelectric fraction          |    0.044 |    0.089 |     2.00 |
+| Compton mean angle (°)          |     64.7 |     53.5 |      --- |
+| Rayleigh mean angle (°)         |      7.2 |     53.0 |      --- |
+| Simulation time (s)             |    464.4 |    151.5 |   3.1×   |
+
+
+
 
 ## Interaction type selection
 
@@ -348,11 +380,8 @@ termination.](fig8_spatial_fluence.pdf){#fig:fluence width=100%}
 
 The agent generated 10 000 photon histories in 151.5 seconds compared
 to 464.4 seconds for the MC reference, a speedup of approximately
-3.1×. This comparison should be interpreted with caution: neither
-implementation is optimized for throughput, the MC simulator is written
-in pure Python without vectorization, and the agent's inference
-includes per-photon GPU transfers that could be amortized through
-batching. The speedup is reported here only to establish that the
+3.1×. This comparison should be interpreted with caution. 
+The speedup is reported here only to establish that the
 agent's inference cost is in the same order as the reference, not to
 claim a definitive performance advantage.
 
