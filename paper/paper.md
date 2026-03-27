@@ -241,8 +241,8 @@ below the transport cutoff sooner than in the MC reference.
 comparison (right) for 10 000 photon histories at 1 MeV. The agent
 reproduces the Compton-dominated interaction mixture and the overall
 PDD shape, with increasing divergence at depth beyond 50 cm due to
-untrained angular distributions.](fig3_interactions_tracks.pdf){#fig:interactions width=48%}
-![](fig1_pdd_comparison.pdf){#fig:pdd width=48%}
+untrained angular distributions.](fig3_interactions_tracks.png){#fig:interactions width=48%}
+![](fig1_pdd_comparison.png){#fig:pdd width=48%}
 
 ## Angular distributions
 
@@ -274,7 +274,7 @@ $\cos\theta$ is planned for the next release.
 shows the expected forward-peaked Rayleigh distribution and broad
 Compton distribution; the agent's angular distributions are broadened
 by a tanh parameterization artifact discussed in the
-text.](fig2_angular_distributions.pdf){#fig:angles width=100%}
+text.](fig2_angular_distributions.png){#fig:angles width=100%}
 
 ## Compton energy--angle consistency
 
@@ -307,7 +307,7 @@ show weak angle--energy correlation. Note that energy conservation
 holds exactly in both cases (the photon and electron energies sum to
 $E_\gamma^{\mathrm{in}}$); the discrepancy is in the *partition
 ratio*, which is not yet constrained to follow the Compton
-formula.](fig6_compton_angle_energy.pdf){#fig:compton_ae width=100%}
+formula.](fig6_compton_angle_energy.png){#fig:compton_ae width=100%}
 
 ## Secondary particle properties
 
@@ -374,7 +374,7 @@ are not yet converged.
 photon interaction positions projected onto the depth--lateral plane.
 Both show forward-peaked structure with lateral spreading; the agent's
 fluence is truncated at depth due to premature track
-termination.](fig8_spatial_fluence.pdf){#fig:fluence width=100%}
+termination.](fig8_spatial_fluence.png){#fig:fluence width=100%}
 
 ## Computational performance
 
