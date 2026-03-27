@@ -183,7 +183,6 @@ approximately \$1.27 USD. Table 1 summarises the training hardware.
 | CPU             | Intel Xeon E5-2696 v3 (18 cores)       |
 | System memory   | 64.5 GB                                |
 | Platform        | Vast.ai cloud rental                   |
-| Rental cost     | \$0.053/hr (~\$1.27 total)             |
 | Training time   | ~24 hours (Phases 0--2, 100k timesteps)|
 | Software        | PyTorch, CUDA 12.6, Jupyter Notebook   |
 
@@ -198,8 +197,8 @@ secondary energy deposition. Table 2 summarizes the key metrics.
 |:--------------------------------|---------:|---------:|---------:|
 | Total interactions              |  137 701 |   66 562 |     0.48 |
 | Mean track length (interactions)|     13.8 |      6.7 |     0.48 |
-| Total dose deposited (MeV)     | 10 689.7 |  8 823.1 |    0.825 |
-| Normalised PDD L₂ distance     |      --- |      --- |   0.226  |
+| Total dose deposited (MeV)      | 10 689.7 |  8 823.1 |    0.825 |
+| Normalised PDD $L_2$ distance   |      --- |      --- |   0.226  |
 | Compton fraction                |    0.922 |    0.886 |     0.96 |
 | Rayleigh fraction               |    0.033 |    0.025 |     0.74 |
 | Photoelectric fraction          |    0.044 |    0.089 |     2.00 |
