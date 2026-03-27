@@ -57,6 +57,41 @@ def _noop_add_to_buffer(*args, **kwargs):
     return None
 
 ###############################################################################
+#                           HEADER
+###############################################################################
+HEADER = r"""
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   ____                        __        __                       ║
+║  | __ )  ___  __ _ _ __ ___   \ \      / /__  __ ___   _____ _ __║
+║  |  _ \ / _ \/ _` | '_ ` _ \   \ \ /\ / / _ \/ _` \ \ / / _ \ '__║
+║  | |_) |  __/ (_| | | | | | |   \ V  V /  __/ (_| |\ V /  __/ |  ║
+║  |____/ \___|\__,_|_| |_| |_|    \_/\_/ \___|\__,_| \_/ \___|_|  ║
+║                                                                  ║
+║                        v 0 . 1 . 0                               ║
+║                                                                  ║
+║  AI-driven photon transport via reinforcement learning           ║
+║                                                                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  Copyright (c) 2025-2026 Pedro Teles & João Melo                 ║
+║  Department of Physics and Astronomy                             ║
+║  Faculty of Sciences, University of Porto, Portugal              ║
+║                                                                  ║
+║  Licensed under the Apache License, Version 2.0                  ║
+║  You may obtain a copy of the License at:                        ║
+║  http://www.apache.org/licenses/LICENSE-2.0                      ║
+║                                                                  ║
+║  Unless required by applicable law or agreed to in writing,      ║
+║  software distributed under the License is distributed on an     ║
+║  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.    ║
+║                                                                  ║
+║  GitHub: https://github.com/PedroTelesFCUP/beam-weaver           ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+"""
+
+###############################################################################
 #                           GLOBAL CONSTANTS
 ###############################################################################
 print("Torch CUDA available?", torch.cuda.is_available())
@@ -7422,6 +7457,7 @@ def main():
 
 
 if __name__=="__main__":
+    print(HEADER)
     import os
     required_files = [
         "Final_cross_sections.csv",
