@@ -6149,7 +6149,290 @@ def analyze_secondaries(secondaries):
     grouped.columns = ["Count", "Mean Energy (MeV)"]
     print("\nSecondary Electron Stats:")
     print(grouped)
+
+
+###############################################################################
+#   EVALUATION DATA EXPORT — add this function near the analysis functions
+###############################################################################
+def save_evaluation_data(
+    mc_tracks, mc_interactions, mc_secondaries, mc_dose,
+    agent_tracks, agent_interactions, agent_secondaries, agent_dose,
+    env, E_fixed, n_photons,
+    mc_time, agent_time,
+    save_dir="eval_data"
+):
+    """
+    Save all evaluation data for offline analysis and paper figures.
     
+    Creates:
+      eval_data/
+        metadata.pkl          — energy, n_photons, timing, phase, geometry
+        mc_dose.npy           — MC depth-dose array
+        agent_dose.npy        — Agent depth-dose array
+        mc_interactions.pkl   — full MC interaction records
+        agent_interactions.pkl— full Agent interaction records
+        mc_tracks.pkl         — MC track coordinates + per-track interactions
+        agent_tracks.pkl      — Agent track coordinates + per-track interactions
+        mc_secondaries.pkl    — MC secondary particle list
+        agent_secondaries.pkl — Agent secondary particle list
+        summary.txt           — human-readable summary
+    """
+    import pickle, json
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # ── 1) Metadata ──────────────────────────────────────────────
+    metadata = {
+        "E_fixed_MeV": E_fixed,
+        "n_photons": n_photons,
+        "mc_time_s": mc_time,
+        "agent_time_s": agent_time,
+        "speedup": mc_time / max(agent_time, 1e-6),
+        "phantom": {
+            "xmin": env.xmin, "xmax": env.xmax,
+            "ymin": env.ymin, "ymax": env.ymax,
+            "zmin": env.zmin, "zmax": env.zmax,
+            "pdd_bins": env.pdd_bins, "dz": env.dz,
+        },
+        "ecut_MeV": env.ecut,
+        "phase": getattr(env, "phase", "unknown"),
+    }
+    with open(os.path.join(save_dir, "metadata.pkl"), "wb") as f:
+        pickle.dump(metadata, f)
+    
+    # ── 2) Depth-dose arrays ─────────────────────────────────────
+    np.save(os.path.join(save_dir, "mc_dose.npy"), np.array(mc_dose))
+    np.save(os.path.join(save_dir, "agent_dose.npy"), np.array(agent_dose))
+    
+    # ── 3) Interaction records ───────────────────────────────────
+    # Convert numpy arrays to lists for serialisation safety
+    def _sanitize_interaction(rec):
+        out = {}
+        for k, v in rec.items():
+            if isinstance(v, np.ndarray):
+                out[k] = v.tolist()
+            elif isinstance(v, tuple):
+                out[k] = [x.tolist() if isinstance(x, np.ndarray) else x for x in v]
+            elif k == "secondaries":
+                secs = []
+                for s in v:
+                    secs.append((
+                        s[0],                                          # particle type
+                        float(s[1]),                                   # energy
+                        s[2].tolist() if isinstance(s[2], np.ndarray) else list(s[2]),  # direction
+                        s[3]                                           # label
+                    ))
+                out[k] = secs
+            else:
+                out[k] = v
+        return out
+    
+    mc_inters_clean = [_sanitize_interaction(r) for r in mc_interactions]
+    agent_inters_clean = [_sanitize_interaction(r) for r in agent_interactions]
+    
+    with open(os.path.join(save_dir, "mc_interactions.pkl"), "wb") as f:
+        pickle.dump(mc_inters_clean, f)
+    with open(os.path.join(save_dir, "agent_interactions.pkl"), "wb") as f:
+        pickle.dump(agent_inters_clean, f)
+    
+    # ── 4) Full tracks (coords + per-track interactions) ─────────
+    def _sanitize_track(track):
+        coords = track["coords"]
+        return {
+            "x": list(coords[0]),
+            "y": list(coords[1]),
+            "z": list(coords[2]),
+            "interactions": [_sanitize_interaction(r) for r in track.get("interactions", [])],
+            "n_interactions": len(track.get("interactions", [])),
+        }
+    
+    mc_tracks_clean = [_sanitize_track(t) for t in mc_tracks]
+    agent_tracks_clean = [_sanitize_track(t) for t in agent_tracks]
+    
+    with open(os.path.join(save_dir, "mc_tracks.pkl"), "wb") as f:
+        pickle.dump(mc_tracks_clean, f)
+    with open(os.path.join(save_dir, "agent_tracks.pkl"), "wb") as f:
+        pickle.dump(agent_tracks_clean, f)
+    
+    # ── 5) Secondaries ───────────────────────────────────────────
+    def _sanitize_sec(s):
+        if isinstance(s, (list, tuple)):
+            return (
+                s[0], float(s[1]),
+                s[2].tolist() if isinstance(s[2], np.ndarray) else list(s[2]),
+                s[3]
+            )
+        return s
+    
+    with open(os.path.join(save_dir, "mc_secondaries.pkl"), "wb") as f:
+        pickle.dump([_sanitize_sec(s) for s in mc_secondaries], f)
+    with open(os.path.join(save_dir, "agent_secondaries.pkl"), "wb") as f:
+        pickle.dump([_sanitize_sec(s) for s in agent_secondaries], f)
+    
+    # ── 6) Human-readable summary ────────────────────────────────
+    # Interaction counts
+    from collections import Counter
+    mc_counts = Counter(r["interaction"] for r in mc_interactions)
+    agent_counts = Counter(r["interaction"] for r in agent_interactions)
+    
+    # Angle stats per interaction
+    def angle_stats(interactions):
+        from collections import defaultdict
+        angles = defaultdict(list)
+        for r in interactions:
+            itype = r["interaction"].split("_")[0]
+            angles[itype].append(r["angle"])
+        stats = {}
+        for itype, vals in angles.items():
+            vals = np.array(vals)
+            stats[itype] = {
+                "count": len(vals),
+                "mean": float(np.mean(vals)),
+                "std": float(np.std(vals)),
+                "median": float(np.median(vals)),
+                "p5": float(np.percentile(vals, 5)),
+                "p95": float(np.percentile(vals, 95)),
+            }
+        return stats
+    
+    mc_angle_stats = angle_stats(mc_interactions)
+    agent_angle_stats = angle_stats(agent_interactions)
+    
+    # Free path stats
+    def fp_stats(interactions):
+        from collections import defaultdict
+        fps = defaultdict(list)
+        for r in interactions:
+            itype = r["interaction"].split("_")[0]
+            fps[itype].append(r["free_path"])
+        stats = {}
+        for itype, vals in fps.items():
+            vals = np.array(vals)
+            stats[itype] = {
+                "count": len(vals),
+                "mean": float(np.mean(vals)),
+                "std": float(np.std(vals)),
+                "median": float(np.median(vals)),
+            }
+        return stats
+    
+    mc_fp_stats = fp_stats(mc_interactions)
+    agent_fp_stats = fp_stats(agent_interactions)
+    
+    # Track length stats
+    mc_lengths = [len(t["interactions"]) for t in mc_tracks]
+    agent_lengths = [len(t["interactions"]) for t in agent_tracks]
+    
+    # Energy stats for secondaries
+    def sec_energy_stats(secondaries):
+        from collections import defaultdict
+        energies = defaultdict(list)
+        for s in secondaries:
+            if isinstance(s, (list, tuple)):
+                label = s[3] if len(s) > 3 else s[0]
+                energies[label].append(float(s[1]))
+        stats = {}
+        for label, vals in energies.items():
+            vals = np.array(vals)
+            stats[label] = {
+                "count": len(vals),
+                "mean": float(np.mean(vals)),
+                "std": float(np.std(vals)),
+            }
+        return stats
+    
+    mc_sec_stats = sec_energy_stats(mc_secondaries)
+    agent_sec_stats = sec_energy_stats(agent_secondaries)
+    
+    with open(os.path.join(save_dir, "summary.txt"), "w") as f:
+        f.write(f"BEAM WEAVER EVALUATION SUMMARY\n")
+        f.write(f"{'='*60}\n")
+        f.write(f"Energy: {E_fixed} MeV\n")
+        f.write(f"Photons: {n_photons}\n")
+        f.write(f"MC time: {mc_time:.2f}s | Agent time: {agent_time:.2f}s\n")
+        f.write(f"Speedup: {mc_time/max(agent_time,1e-6):.2f}x\n\n")
+        
+        f.write(f"INTERACTION COUNTS\n{'-'*40}\n")
+        all_types = sorted(set(list(mc_counts.keys()) + list(agent_counts.keys())))
+        f.write(f"{'Type':<15} {'MC':>8} {'Agent':>8} {'Ratio':>8}\n")
+        for t in all_types:
+            mc_n = mc_counts.get(t, 0)
+            ag_n = agent_counts.get(t, 0)
+            ratio = ag_n / max(mc_n, 1)
+            f.write(f"{t:<15} {mc_n:>8} {ag_n:>8} {ratio:>8.2f}\n")
+        
+        f.write(f"\nANGLE STATISTICS (degrees)\n{'-'*40}\n")
+        for itype in sorted(mc_angle_stats.keys()):
+            mc_s = mc_angle_stats.get(itype, {})
+            ag_s = agent_angle_stats.get(itype, {})
+            f.write(f"\n{itype}:\n")
+            f.write(f"  MC:    mean={mc_s.get('mean',0):.1f}  std={mc_s.get('std',0):.1f}  "
+                    f"median={mc_s.get('median',0):.1f}  [p5={mc_s.get('p5',0):.1f}, p95={mc_s.get('p95',0):.1f}]\n")
+            f.write(f"  Agent: mean={ag_s.get('mean',0):.1f}  std={ag_s.get('std',0):.1f}  "
+                    f"median={ag_s.get('median',0):.1f}  [p5={ag_s.get('p5',0):.1f}, p95={ag_s.get('p95',0):.1f}]\n")
+        
+        f.write(f"\nFREE PATH STATISTICS (cm)\n{'-'*40}\n")
+        for itype in sorted(mc_fp_stats.keys()):
+            mc_s = mc_fp_stats.get(itype, {})
+            ag_s = agent_fp_stats.get(itype, {})
+            f.write(f"\n{itype}:\n")
+            f.write(f"  MC:    mean={mc_s.get('mean',0):.3f}  std={mc_s.get('std',0):.3f}\n")
+            f.write(f"  Agent: mean={ag_s.get('mean',0):.3f}  std={ag_s.get('std',0):.3f}\n")
+        
+        f.write(f"\nTRACK LENGTH (interactions per photon)\n{'-'*40}\n")
+        f.write(f"  MC:    mean={np.mean(mc_lengths):.1f}  std={np.std(mc_lengths):.1f}  "
+                f"median={np.median(mc_lengths):.0f}  max={max(mc_lengths)}\n")
+        f.write(f"  Agent: mean={np.mean(agent_lengths):.1f}  std={np.std(agent_lengths):.1f}  "
+                f"median={np.median(agent_lengths):.0f}  max={max(agent_lengths)}\n")
+        
+        f.write(f"\nSECONDARY PARTICLE ENERGIES (MeV)\n{'-'*40}\n")
+        all_sec_types = sorted(set(list(mc_sec_stats.keys()) + list(agent_sec_stats.keys())))
+        for label in all_sec_types:
+            mc_s = mc_sec_stats.get(label, {})
+            ag_s = agent_sec_stats.get(label, {})
+            f.write(f"\n{label}:\n")
+            if mc_s:
+                f.write(f"  MC:    n={mc_s['count']}  mean={mc_s['mean']:.4f}  std={mc_s['std']:.4f}\n")
+            if ag_s:
+                f.write(f"  Agent: n={ag_s['count']}  mean={ag_s['mean']:.4f}  std={ag_s['std']:.4f}\n")
+        
+        f.write(f"\nDEPTH-DOSE\n{'-'*40}\n")
+        mc_d = np.array(mc_dose)
+        ag_d = np.array(agent_dose)
+        f.write(f"  MC total deposited:    {mc_d.sum():.2f} MeV\n")
+        f.write(f"  Agent total deposited: {ag_d.sum():.2f} MeV\n")
+        f.write(f"  Ratio (agent/MC):      {ag_d.sum()/max(mc_d.sum(),1e-6):.3f}\n")
+        # L2 distance on normalised curves
+        mc_norm = mc_d / max(mc_d.max(), 1e-12)
+        ag_norm = ag_d / max(ag_d.max(), 1e-12)
+        l2 = float(np.sqrt(np.mean((mc_norm - ag_norm)**2)))
+        f.write(f"  Normalised PDD L2:     {l2:.4f}\n")
+    
+    # ── 7) Save summary stats as pkl for programmatic access ─────
+    stats_dict = {
+        "metadata": metadata,
+        "mc_interaction_counts": dict(mc_counts),
+        "agent_interaction_counts": dict(agent_counts),
+        "mc_angle_stats": mc_angle_stats,
+        "agent_angle_stats": agent_angle_stats,
+        "mc_fp_stats": mc_fp_stats,
+        "agent_fp_stats": agent_fp_stats,
+        "mc_track_lengths": mc_lengths,
+        "agent_track_lengths": agent_lengths,
+        "mc_sec_energy_stats": mc_sec_stats,
+        "agent_sec_energy_stats": agent_sec_stats,
+        "pdd_l2_normalised": l2,
+    }
+    with open(os.path.join(save_dir, "stats.pkl"), "wb") as f:
+        pickle.dump(stats_dict, f)
+    
+    # Done
+    total_files = len(os.listdir(save_dir))
+    total_size = sum(os.path.getsize(os.path.join(save_dir, f)) 
+                     for f in os.listdir(save_dir)) / 1e6
+    print(f"\n✅ Saved {total_files} files to '{save_dir}/' ({total_size:.1f} MB)")
+    print(f"   Key files: metadata.pkl, mc/agent_dose.npy, mc/agent_tracks.pkl,")
+    print(f"              mc/agent_interactions.pkl, stats.pkl, summary.txt")
+
 def print_tracks_table(tracks, shower_type="MC", num_examples=5):
     import random, math, numpy as np
     # Sample exactly num_examples tracks (if available)
@@ -6480,9 +6763,23 @@ class PhaseSwitchCallback(BaseCallback):
                 b.phase = phase
 
 
-            # Reset energy curriculum when entering Phase 2
             if phase == 2:
                 print("🔄 Entering phase 2: Resetting energy curriculum to regime 0")
+                # Flush stale Phase 0-1 transitions — their rewards (r_disc)
+                # and random continuous actions would poison the Phase 2 critic.
+                self.model.replay_buffer = NStepReplayBuffer(
+                    buffer_size=self.model.replay_buffer.buffer_size,
+                    observation_space=self.model.observation_space,
+                    action_space=self.model.action_space,
+                    device=self.model.device,
+                    n_envs=1,
+                    gamma=self.model.gamma,
+                    n_steps=N_STEPS_RETURN,
+                    optimize_memory_usage=False,
+                )
+                self.model.learning_starts = self.model.num_timesteps + 256
+                print("🗑️  Replay buffer cleared for Phase 2 (stale r_disc transitions removed)")
+
                 for v in self.training_env.envs:
                     base = getattr(v, "env", v)
                     base.current_regime = 0  # Start energy curriculum over
@@ -7115,6 +7412,13 @@ def main():
 
     print_tracks_table(mc_tracks, shower_type="Monte Carlo")
     print_tracks_table(agent_tracks, shower_type="Agent")
+    save_evaluation_data(
+        mc_tracks, mc_interactions, mc_secondaries, mc_dose,
+        agent_tracks, agent_interactions, agent_secondaries, agent_dose,
+        agent_env, fixed_energy, n_photons,
+        mc_time, agent_time,
+        save_dir="eval_data"
+    )
 
 
 if __name__=="__main__":
