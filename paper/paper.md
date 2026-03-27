@@ -217,48 +217,46 @@ deviations---Rayleigh is under-predicted by a factor of 0.74 and
 photoelectric is over-predicted by a factor of 2---but these are
 minority channels at 1 MeV (together accounting for less than 8% of MC
 interactions) and the agent has not yet undergone angular curriculum
-training at energies where these channels dominate. The interaction
-proportions are shown in Figure 1 (left panel).
+training at energies where these channels dominate.
 
 ## Depth--dose behaviour
 
-Figure 1 (right panel) compares the percentage depth--dose (PDD)
-curves. The agent reproduces the overall exponential attenuation
-profile, with good shape agreement in the first 30--40 cm of depth.
-Beyond approximately 50 cm, the agent's PDD falls off more steeply
-than the MC reference, resulting in a total deposited dose that is
-82.5% of the MC value. This under-deposition at depth is consistent
-with the shorter mean track length (6.7 versus 13.8 interactions per
-photon): incorrect angular distributions cause unphysical energy
-transfers that terminate photon histories prematurely. Despite
-the hard energy conservation constraint, incorrect energy *partition
-ratios* (driven by the uncoupled angle--energy parameterization
-discussed below) lead to excessive energy transfer to secondary
-electrons at individual interaction sites, reducing the photon energy
-below the transport cutoff sooner than in the MC reference.
+\autoref{fig:interactions} shows the interaction type proportions and
+track length distributions. \autoref{fig:pdd} compares the percentage
+depth--dose (PDD) curves. The agent reproduces the overall exponential
+attenuation profile, with good shape agreement in the first 30--40 cm
+of depth. Beyond approximately 50 cm, the agent's PDD falls off more
+steeply than the MC reference, resulting in a total deposited dose
+that is 82.5% of the MC value. This under-deposition at depth is
+consistent with the shorter mean track length (6.7 versus 13.8
+interactions per photon): incorrect angular distributions cause
+unphysical energy transfers that terminate photon histories
+prematurely. Despite the hard energy conservation constraint, incorrect
+energy *partition ratios* (driven by the uncoupled angle--energy
+parameterization discussed below) lead to excessive energy transfer to
+secondary electrons at individual interaction sites, reducing the
+photon energy below the transport cutoff sooner than in the MC
+reference.
 
-![Interaction type proportions (left) and percentage depth--dose
-comparison (right) for 10 000 photon histories at 1 MeV. The agent
-reproduces the Compton-dominated interaction mixture and the overall
-PDD shape, with increasing divergence at depth beyond 50 cm due to
-untrained angular distributions.](fig3_interactions_tracks.png){#fig:interactions width=48%}
-![](fig1_pdd_comparison.png){#fig:pdd width=48%}
+![Interaction type proportions (top) and track length distributions (bottom) for 10 000 photon histories at 1 MeV. The agent reproduces the Compton-dominated interaction mixture. Track lengths are shorter for the agent due to untrained angular distributions.\label{fig:interactions}](fig3_interactions_tracks.png)
+
+![Percentage depth--dose comparison for 10 000 photon histories at 1 MeV. Top: absolute deposited energy; bottom: normalised PDD shape. The agent reproduces the overall attenuation profile with increasing divergence at depth beyond 50 cm.\label{fig:pdd}](fig1_pdd_comparison.png)
 
 ## Angular distributions
 
-Figure 2 shows the scattering-angle distributions for Rayleigh,
-Compton, and photoelectric interactions. Rayleigh scattering in the MC
-reference is tightly forward-peaked (mean 7.2°, 95th percentile
-18.9°), as expected from the coherent form-factor weighting at 1 MeV.
-The agent instead produces a broad angular distribution (mean 53.0°)
-that spans the full 0--180° range. Compton scattering shows
-qualitatively better agreement (MC mean 64.7° versus agent mean 53.5°),
-but with substantially higher variance (agent standard deviation 61.4°
-versus MC 42.3°) and a spurious concentration of events near 0°. The
-photoelectric electron angular distribution is consistent between MC
-and agent, both showing broad distributions as expected from the
-Sauter and isotropic angular models used for K-shell and L-shell
-ejection respectively.
+\autoref{fig:angles} shows the scattering-angle distributions for
+Rayleigh, Compton, and photoelectric interactions. Rayleigh scattering
+in the MC reference is tightly forward-peaked (mean 7.2°, 95th
+percentile 18.9°), as expected from the coherent form-factor weighting
+at 1 MeV. The agent instead produces a broad angular distribution
+(mean 53.0°) that spans the full 0--180° range. Compton scattering
+shows qualitatively better agreement (MC mean 64.7° versus agent mean
+53.5°), but with substantially higher variance (agent standard
+deviation 61.4° versus MC 42.3°) and a spurious concentration of
+events near 0°. The photoelectric electron angular distribution is
+consistent between MC and agent, both showing broad distributions as
+expected from the Sauter and isotropic angular models used for K-shell
+and L-shell ejection respectively.
 
 These angular discrepancies have a known cause: the current
 implementation parameterizes scattering angles by mapping the policy
@@ -269,19 +267,14 @@ forward-peaked distributions structurally difficult to represent
 regardless of the reward signal. A reparameterization from $\theta$ to
 $\cos\theta$ is planned for the next release.
 
-![Scattering-angle distributions for Rayleigh (left), Compton
-(centre), and photoelectric (right) interactions. The MC reference
-shows the expected forward-peaked Rayleigh distribution and broad
-Compton distribution; the agent's angular distributions are broadened
-by a tanh parameterization artifact discussed in the
-text.](fig2_angular_distributions.png){#fig:angles width=100%}
+![Scattering-angle distributions for Rayleigh (top), Compton (middle), and photoelectric (bottom) interactions. The MC reference shows the expected forward-peaked Rayleigh distribution and broad Compton distribution; the agent's angular distributions are broadened by a tanh parameterization artifact discussed in the text.\label{fig:angles}](fig2_angular_distributions.png)
 
 ## Compton energy--angle consistency
 
-Figure 3 examines the kinematic consistency of Compton scattering
-events by plotting the scattered photon energy against scattering angle
-alongside the Klein--Nishina prediction. In the MC reference, all
-events lie on or near the analytic curve
+\autoref{fig:compton_ae} examines the kinematic consistency of Compton
+scattering events by plotting the scattered photon energy against
+scattering angle alongside the Klein--Nishina prediction. In the MC
+reference, all events lie on or near the analytic curve
 $E_{\mathrm{out}} = E_{\mathrm{in}} / (1 + \alpha(1 - \cos\theta))$.
 The agent's events form a diffuse cloud with weak correlation between
 angle and energy.
@@ -300,23 +293,16 @@ correlation required by Klein--Nishina kinematics. A fourfold increase
 in the consistency penalty coefficient ($\lambda = 0.05 \to 0.20$) is
 planned for the next training iteration.
 
-![Compton scattering angle versus scattered photon energy for MC
-(left) and agent (right). The dashed line shows the Klein--Nishina
-prediction at 1 MeV. MC events follow the analytic curve; agent events
-show weak angle--energy correlation. Note that energy conservation
-holds exactly in both cases (the photon and electron energies sum to
-$E_\gamma^{\mathrm{in}}$); the discrepancy is in the *partition
-ratio*, which is not yet constrained to follow the Compton
-formula.](fig6_compton_angle_energy.png){#fig:compton_ae width=100%}
+![Compton scattering angle versus scattered photon energy for MC (top) and agent (bottom). The dashed line shows the Klein--Nishina prediction at 1 MeV. MC events follow the analytic curve; agent events show weak angle--energy correlation. Note that energy conservation holds exactly in both cases; the discrepancy is in the partition ratio, which is not yet constrained to follow the Compton formula.\label{fig:compton_ae}](fig6_compton_angle_energy.png)
 
 ## Secondary particle properties
 
-Table 2 summarizes the secondary electron properties. As noted above,
+Table 3 summarizes the secondary electron properties. As noted above,
 the number of secondaries per interaction is structurally enforced:
 every Compton event produces exactly one recoil electron, every
 photoelectric event produces exactly one ejected electron, and every
 pair production event produces one electron and one positron. The
-counts in Table 2 therefore reflect the total number of each
+counts in Table 3 therefore reflect the total number of each
 interaction type rather than a learned multiplicity.
 
 The Compton recoil electron count is proportional to the total number
@@ -340,7 +326,7 @@ partition---seeded from the low-energy regime---has not yet adapted to
 higher energies. This is expected to resolve as the curriculum
 progresses through higher-energy regimes.
 
-**Table 2.** Secondary electron statistics.
+**Table 3.** Secondary electron statistics.
 
 | Label       | MC count | MC mean E (MeV) | Agent count | Agent mean E (MeV) |
 |:------------|--------:|-----------------:|------------:|-------------------:|
@@ -361,20 +347,16 @@ Compton should dominate.
 
 ## Spatial fluence
 
-Figure 4 shows the XZ fluence maps for MC and agent showers. Both
-exhibit the expected forward-peaked pencil-beam structure with lateral
-scatter increasing with depth. The agent's fluence is truncated at
-shallower depths, consistent with the shorter track lengths and
-steeper PDD falloff discussed above. The lateral spread at matched
-depths is qualitatively similar, suggesting that the overall transport
-geometry is reasonable even though the per-event angular distributions
-are not yet converged.
+\autoref{fig:fluence} shows the XZ fluence maps for MC and agent
+showers. Both exhibit the expected forward-peaked pencil-beam structure
+with lateral scatter increasing with depth. The agent's fluence is
+truncated at shallower depths, consistent with the shorter track
+lengths and steeper PDD falloff discussed above. The lateral spread at
+matched depths is qualitatively similar, suggesting that the overall
+transport geometry is reasonable even though the per-event angular
+distributions are not yet converged.
 
-![XZ spatial fluence maps for MC (left) and agent (right), showing
-photon interaction positions projected onto the depth--lateral plane.
-Both show forward-peaked structure with lateral spreading; the agent's
-fluence is truncated at depth due to premature track
-termination.](fig8_spatial_fluence.png){#fig:fluence width=100%}
+![XZ spatial fluence maps for MC (top) and agent (bottom), showing photon interaction positions projected onto the depth--lateral plane. Both show forward-peaked structure with lateral spreading; the agent's fluence is truncated at depth due to premature track termination.\label{fig:fluence}](fig7_spatial_fluence.png)
 
 ## Computational performance
 
