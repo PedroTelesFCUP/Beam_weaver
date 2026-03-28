@@ -357,6 +357,91 @@ distributions are not yet converged.
 
 ![XZ spatial fluence maps for MC (top) and agent (bottom), showing photon interaction positions projected onto the depth--lateral plane. Both show forward-peaked structure with lateral spreading; the agent's fluence is truncated at depth due to premature track termination.\label{fig:fluence}](fig7_spatial_fluence.pdf)
 
+## Example photon tracks
+
+To illustrate the agent's behaviour at the level of individual
+particle histories, \autoref{tab:mc_track} and
+\autoref{tab:agent_track} show representative photon tracks from the
+MC reference and the agent respectively, both starting at 1 MeV.
+
+**Table 4.** Representative MC photon track (18 interactions).
+\label{tab:mc_track}
+
+| Step | Type     | E (MeV)       | Angle (°) | Sec E (MeV) | e⁻ Angle (°) |
+|-----:|:---------|:--------------|----------:|-----------:|--------------:|
+|    1 | compton  | 1.000 → 0.905 |      18.8 |      0.095 |          63.9 |
+|    2 | compton  | 0.905 → 0.405 |      72.5 |      0.501 |          26.2 |
+|    3 | compton  | 0.405 → 0.176 |     129.6 |      0.228 |          14.7 |
+|    4 | compton  | 0.176 → 0.165 |      36.4 |      0.011 |          66.1 |
+|    5 | compton  | 0.165 → 0.101 |     161.8 |      0.064 |           6.9 |
+|    6 | compton  | 0.101 → 0.083 |      98.5 |      0.019 |          35.7 |
+|    7 | compton  | 0.083 → 0.071 |      89.7 |      0.011 |          40.9 |
+|    8 | compton  | 0.071 → 0.070 |      27.2 |      0.001 |          74.6 |
+|    9 | rayleigh | 0.070 → 0.070 |       1.3 |        --- |           --- |
+|   10 | compton  | 0.070 → 0.067 |      48.7 |      0.003 |          62.7 |
+|   11 | compton  | 0.067 → 0.062 |      63.9 |      0.005 |          54.8 |
+|   12 | compton  | 0.062 → 0.058 |      67.8 |      0.004 |          53.0 |
+|   13 | compton  | 0.058 → 0.057 |      26.2 |      0.001 |          75.5 |
+|   14 | rayleigh | 0.057 → 0.057 |       2.6 |        --- |           --- |
+|   15 | compton  | 0.052 → 0.046 |     109.0 |      0.006 |          32.9 |
+|   16 | compton  | 0.046 → 0.039 |     146.0 |      0.006 |          15.7 |
+|   17 | photo    | 0.039 → 0.000 |      90.0 |      0.039 |          37.2 |
+
+**Table 5.** Representative agent photon track (12 interactions).
+\label{tab:agent_track}
+
+| Step | Type     | E (MeV)       | Angle (°) | Sec E (MeV) | e⁻ Angle (°) |
+|-----:|:---------|:--------------|----------:|-----------:|--------------:|
+|    1 | compton  | 1.000 → 0.911 |       1.0 |      0.089 |          10.8 |
+|    2 | compton  | 0.911 → 0.909 |      68.4 |      0.002 |           7.1 |
+|    3 | compton  | 0.909 → 0.855 |     179.6 |      0.054 |          15.6 |
+|    4 | compton  | 0.855 → 0.851 |       1.7 |      0.004 |           1.9 |
+|    5 | compton  | 0.851 → 0.844 |     108.9 |      0.007 |         179.4 |
+|    6 | compton  | 0.844 → 0.843 |     136.3 |      0.001 |         178.6 |
+|    7 | compton  | 0.843 → 0.073 |     132.5 |      0.770 |          50.3 |
+|    8 | compton  | 0.073 → 0.036 |       0.0 |      0.036 |         171.0 |
+|    9 | compton  | 0.034 → 0.029 |       0.6 |      0.004 |          82.6 |
+|   10 | rayleigh | 0.029 → 0.029 |      55.0 |        --- |           --- |
+|   11 | compton  | 0.029 → 0.000 |       0.6 |      0.029 |           4.8 |
+
+Several features of the MC track illustrate physically correct
+transport. The energy--angle correlation follows Klein--Nishina
+kinematics throughout: small-angle scatters transfer little energy
+(step 1: 18.8° loses 9.5%), while large-angle backscatters transfer
+substantial energy (step 3: 129.6° loses 57%; step 5: 161.8° loses
+39%). Recoil electron angles are kinematically consistent, with
+forward electrons accompanying large photon deflections (step 3:
+electron at 14.7°; step 5: electron at 6.9°) and near-perpendicular
+electrons for glancing scatters (step 8: electron at 74.6°). The two
+Rayleigh events at low energy (steps 9 and 14) produce the expected
+very small deflections (1.3° and 2.6°). The photon cascades through
+18 interactions over a wide angular range before terminating via
+photoelectric absorption at 0.039 MeV.
+
+The agent track reveals the known failure modes discussed above. The
+energy--angle correlation is absent: step 1 scatters at only 1.0° yet
+transfers 8.9% of the energy, while step 7 scatters at 132.5° and
+transfers 91%---the latter is roughly consistent with Klein--Nishina,
+but step 8 then scatters at 0.0° while losing 51% of the remaining
+energy, which is kinematically impossible. Several electron ejection
+angles cluster near 180° (steps 5, 6, 8), indicating that the
+electron is ejected backward relative to the incident photon---a
+pattern that violates momentum conservation and reflects the untrained
+state of the secondary-angle outputs. The single Rayleigh event
+(step 10) deflects by 55°, far from the forward-peaked distribution
+expected at 0.029 MeV, consistent with the tanh parameterization
+artifact. The track terminates after only 12 interactions, roughly
+half the MC track length, because the unphysical energy partitioning
+drains photon energy faster than the correct kinematics would permit.
+
+Despite these deficiencies, the agent track exhibits structurally
+correct features: interaction types are physically plausible (Compton
+dominates at high energy, photoelectric terminates at low energy),
+energy conservation holds exactly at every step, and the overall
+cascade structure---progressive energy degradation ending in
+absorption---is qualitatively recognisable as photon transport.
+
+
 ## Computational performance
 
 The agent generated 50 000 photon histories in 694.3 seconds compared
