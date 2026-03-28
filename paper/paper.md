@@ -357,6 +357,10 @@ distributions are not yet converged.
 
 ![XZ spatial fluence maps for MC (top) and agent (bottom), showing photon interaction positions projected onto the depth--lateral plane. Both show forward-peaked structure with lateral spreading; the agent's fluence is truncated at depth due to premature track termination.\label{fig:fluence}](fig7_spatial_fluence.pdf)
 
+
+
+![Three-dimensional photon tracks for 50 000 histories at 1 MeV. MC reference (left, blue) and RL agent (right, red). Both show forward-peaked shower structure with lateral spreading; the agent's tracks are shorter and less populated at depth due to untrained angular distributions.\label{fig:tracks3d}](fig8_particle_tracks.png)
+
 \autoref{fig:tracks3d} shows three-dimensional photon tracks for the
 MC reference (left, blue) and the agent (right, red), rendered from
 the same 50 000-history evaluation. Both panels display the
@@ -370,9 +374,6 @@ qualitative similarity of the two panels, despite the known angular
 and energy-partition deficiencies, suggests that the agent has
 captured the gross spatial structure of photon transport even before
 completing the full training curriculum.
-
-![Three-dimensional photon tracks for 50 000 histories at 1 MeV. MC reference (left, blue) and RL agent (right, red). Both show forward-peaked shower structure with lateral spreading; the agent's tracks are shorter and less populated at depth due to untrained angular distributions.\label{fig:tracks3d}](fig8_particle_tracks.png)
-Drop this right after the ## Spatial fluence section and before ## Computational performance.You've used 75% of your weekly limitGet more usage Opus 4.6ExtendedClaude is AI and can make mistakes. Please double-check responses.
 
 ## Example photon tracks
 
