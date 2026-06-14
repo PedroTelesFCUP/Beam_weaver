@@ -1,4 +1,38 @@
 # !/usr/bin/env python3
+###############################################################################
+#                           HEADER
+###############################################################################
+HEADER = r"""
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   ____                        __        __                       ║
+║  | __ )  ___  __ _ _ __ ___   \ \      / /__  __ ___   _____ _ __║
+║  |  _ \ / _ \/ _` | '_ ` _ \   \ \ /\ / / _ \/ _` \ \ / / _ \ '__║
+║  | |_) |  __/ (_| | | | | | |   \ V  V /  __/ (_| |\ V /  __/ |  ║
+║  |____/ \___|\__,_|_| |_| |_|    \_/\_/ \___|\__,_| \_/ \___|_|  ║
+║                                                                  ║
+║                        v 0 . 1 . 0                               ║
+║                                                                  ║
+║  AI-driven photon transport via reinforcement learning           ║
+║                                                                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  Copyright (c) 2025-2026 Pedro Teles & João Melo                 ║
+║  Department of Physics and Astronomy                             ║
+║  Faculty of Sciences, University of Porto, Portugal              ║
+║                                                                  ║
+║  Licensed under the Apache License, Version 2.0                  ║
+║  You may obtain a copy of the License at:                        ║
+║  http://www.apache.org/licenses/LICENSE-2.0                      ║
+║                                                                  ║
+║  Unless required by applicable law or agreed to in writing,      ║
+║  software distributed under the License is distributed on an     ║
+║  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.    ║
+║                                                                  ║
+║  GitHub: https://github.com/PedroTelesFCUP/beam-weaver           ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+"""
 import os
 import sys
 import time
@@ -55,41 +89,6 @@ warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium.spaces
 def _noop_add_to_buffer(*args, **kwargs):
     """Picklable replacement for replay_buffer.add during warm-up."""
     return None
-
-###############################################################################
-#                           HEADER
-###############################################################################
-HEADER = r"""
-╔══════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║   ____                        __        __                       ║
-║  | __ )  ___  __ _ _ __ ___   \ \      / /__  __ ___   _____ _ __║
-║  |  _ \ / _ \/ _` | '_ ` _ \   \ \ /\ / / _ \/ _` \ \ / / _ \ '__║
-║  | |_) |  __/ (_| | | | | | |   \ V  V /  __/ (_| |\ V /  __/ |  ║
-║  |____/ \___|\__,_|_| |_| |_|    \_/\_/ \___|\__,_| \_/ \___|_|  ║
-║                                                                  ║
-║                        v 0 . 1 . 0                               ║
-║                                                                  ║
-║  AI-driven photon transport via reinforcement learning           ║
-║                                                                  ║
-╠══════════════════════════════════════════════════════════════════╣
-║                                                                  ║
-║  Copyright (c) 2025-2026 Pedro Teles & João Melo                 ║
-║  Department of Physics and Astronomy                             ║
-║  Faculty of Sciences, University of Porto, Portugal              ║
-║                                                                  ║
-║  Licensed under the Apache License, Version 2.0                  ║
-║  You may obtain a copy of the License at:                        ║
-║  http://www.apache.org/licenses/LICENSE-2.0                      ║
-║                                                                  ║
-║  Unless required by applicable law or agreed to in writing,      ║
-║  software distributed under the License is distributed on an     ║
-║  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.    ║
-║                                                                  ║
-║  GitHub: https://github.com/PedroTelesFCUP/beam-weaver           ║
-║                                                                  ║
-╚══════════════════════════════════════════════════════════════════╝
-"""
 
 ###############################################################################
 #                           GLOBAL CONSTANTS
@@ -213,17 +212,26 @@ def _set_phase(model, phase: int) -> None:
             n_frozen += 1
             continue  # nothing else to decide for this param
 
-        # ---------------------- curriculum switch ---------------------
-        if is_phys(name):
-            # Physics heads stay frozen in ALL phases after pretraining.
-            # The physics loss gradient flows through them into the
-            # features_extractor, anchoring it in physics-meaningful space.
+        # ---------------------- pretrained physics modules ------------------
+        # The physics heads/backbone AND the shared feature extractor are trained
+        # in the supervised pre-training stage and must remain frozen during SAC in
+        # EVERY phase. Previously is_phys() was defined but never called, so the
+        # "phase >= 2 -> train everything except the discrete head" branch below
+        # silently un-froze these modules on resume. Combined with the (now also
+        # fixed) unconditional load_physics_head() reload, that un-freezing is what
+        # produced the ~4x physics-loss spike when resuming mid-curriculum.
+        if is_phys(name) or name.startswith("features_extractor"):
             p.requires_grad = False
-        elif phase < 2:  # PHASE 0–1 → train discrete + feature extractor only
+            n_frozen += 1
+            continue
+
+        # ---------------------- curriculum switch ---------------------
+        if phase < 2:  # PHASE 0–1 → train discrete only
             p.requires_grad = name.startswith(("features_extractor",
                                                "discrete_head"))
-        else:          # PHASE ≥2  → freeze discrete, train feat extractor + continuous
+        else:          # PHASE ≥2  → freeze discrete, train the rest
             p.requires_grad = not name.startswith("discrete_head")
+
         # ---------------------- bookkeeping ---------------------------
         if p.requires_grad:
             n_train += 1
@@ -274,15 +282,7 @@ def _set_phase(model, phase: int) -> None:
                         assert param[i].requires_grad, f"Bias element {i} was frozen by mistake!"
             print("✅  Only μ–residual mean is frozen; all other continuous_head params are trainable.")
             # ─────────────────────────────────────────────────────────────
-            # Sanity check: physics heads must be frozen
-            for pname, param in actor.named_parameters():
-                if is_phys(pname):
-                    assert not param.requires_grad, (
-                        f"❌ Physics param '{pname}' is trainable in Phase 2! "
-                        f"It should be frozen after pretraining."
-                    )
-            print("✅  All physics heads confirmed frozen in Phase 2.")
-            # ─────────────────────────────────────────────────────────────
+
             
             # grab any of the wrapped envs – all share the same window
             base_env = model.get_env().envs[0].unwrapped
@@ -1099,15 +1099,24 @@ def sample_pair(E, old_dir, data):
         return math.sqrt(mec2/Etot)* sqrt_term
     theta_e= sample_theta(E_e_total)
     theta_p= sample_theta(E_p_total)
+    # Electron and positron azimuths are sampled INDEPENDENTLY.
+    # The previous code forced phi_p = phi_e + pi (exact azimuthal anti-correlation),
+    # which assumes zero transverse momentum is transferred to the nucleus. Under
+    # Bethe-Heitler the nucleus is precisely what absorbs the transverse recoil, so
+    # the leptons are not back-to-back in azimuth. Independent uniform azimuths is the
+    # standard MC treatment (PENELOPE/EGS/Geant4) and — crucially for this project —
+    # it matches the agent, which predicts the positron angles from its own action
+    # slots (cont[8], cont[9]). Keeping the reference sampler self-consistent with the
+    # agent's parameterisation is required for the per-interaction angular-KL reward.
     phi_e= 2*math.pi*random.random()
-    phi_p= phi_e+math.pi
+    phi_p= 2*math.pi*random.random()
     dir_e= rotate_direction(old_dir,theta_e,phi_e)
     dir_p= rotate_direction(old_dir,theta_p,phi_p)
     secs=[("electron", eps_e, dir_e,"pair_e"),
           ("positron", eps_p, dir_p,"pair_p")]
     # Default shell onehot (no photoelectric event)
     shell_onehot = [0,0,0,0,0]
-    return (np.array([0.0, 0.0, 0.0]), 0.0, secs, "pair", shell_onehot)
+    return (np.array([0,0,0]), 0.0, secs, "pair", shell_onehot)
 
 def photon_interact(E, direction, data:PenelopeLikeWaterData):
     (coh,inc,pho,ppr,tot)= data.partial_cs(E)
@@ -1204,8 +1213,28 @@ def sample_brem_energy(dE_rad):
         if random.random() < eps:  # Rejection sampling
             return dE_rad * eps
 
+    pos = np.array(start_pos)
+    remaining_energy = E_electron
+    total_deposit = 0.0
     
-
+    while remaining_energy > 0.001:  # 1 keV cutoff
+        S = stopping_power(remaining_energy, Egrid, S_vals)
+        if S <= 0:
+            break
+            
+        # Adaptive step size
+        step = max(0.001, remaining_energy / S)  # At least 0.001 cm
+        dE = S * step
+        
+        # Update position and tally
+        pos += step * direction
+        k = int((pos[2] - env.zmin) / env.dz)
+        if 0 <= k < env.pdd_bins:
+            dose_tally[k] += dE
+            
+        remaining_energy -= dE
+        total_deposit += dE
+    return total_deposit
 
 def transport_electron_condensed_history(
     E_electron, 
@@ -1717,11 +1746,24 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         self.force_mc_interaction = False
         # Flattened action dimension:
         # discrete => 1
-        # continuous => 2 + 3*NsecMax (like your old approach)
-        base_cont   = 4 + 3*self.NsecMax
-        self.cont_dim   = base_cont + 2 
+        # continuous => base_cont (gauss dims) + 2 (mfp tail)
+        # Continuous-action layout (per particle): one energy slot, TWO polar-angle
+        # slots (cosθ, sinθ), and one azimuth slot.  Photon block = [unused, E, θcos,
+        # θsin, φ] = 5 slots; each of the NsecMax secondary blocks = [E, θcos, θsin, φ]
+        # = 4 slots.  Polar angles use a (cos, sin) encoding (see _decode_polar /
+        # _encode_polar) to remove the forward/back boundary pathology of the old
+        # linear-θ map and to match the physics head, which already regresses (sin,cos).
+        base_cont   = 5 + 4*self.NsecMax
+        self.cont_dim   = base_cont + 2
         self.action_dim = 1 + self.cont_dim 
         self.action_space= spaces.Box(low=-1.0, high=1.0, shape=(self.action_dim,), dtype=np.float32)
+
+        # Hard guard against silent layout drift: every downstream index (decode,
+        # teacher-forcing encode, _mask_cont, run_agent_shower) assumes exactly this
+        # width.  Fail loudly here rather than corrupting a training run.
+        assert self.cont_dim == 5 + 4*self.NsecMax + 2, (
+            f"cont_dim={self.cont_dim} inconsistent with NsecMax={self.NsecMax} "
+            f"under the (cos,sin) polar-angle layout (expected {5 + 4*self.NsecMax + 2})")
 
         # Physical parameter ranges
         self.param_ranges = {
@@ -2063,13 +2105,35 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         pair-production angular reward, not as a sampling kernel.
         """
         E_total_approx = max(E_gamma / 2.0, mec2) # each particle ≈ half
-        return mec2 / E_total_approx
-        
+        return mec2_local / E_total_approx
+
+    def _decode_polar(self, cos_raw, sin_raw):
+        """Map a (cosθ, sinθ) action pair to a polar angle θ ∈ [0, π].
+
+        The two squashed-Gaussian slots are read as an unnormalised 2-D vector;
+        θ is its angle from the +cos axis, taken in [0, π] (sinθ ≥ 0 for a polar
+        angle, so we use |sin|).  Because forward (θ→0) and backward (θ→π) now
+        correspond to *interior* action points (sin≈0, cos>0 or cos<0) rather
+        than the action-box boundaries, the squashed Gaussian can represent and
+        reach sharply forward/back-peaked distributions — which the old linear
+        θ = (val+1)·π/2 map could not.  This mirrors the (sin, cos) angle
+        encoding the physics head already regresses against.
+        """
+        c = float(np.clip(cos_raw, -1.0, 1.0))
+        s = float(np.clip(sin_raw, -1.0, 1.0))
+        return math.atan2(abs(s), c)          # ∈ [0, π]
+
+    def _encode_polar(self, theta):
+        """Inverse of _decode_polar for teacher forcing: write the MC angle as a
+        (cosθ, sinθ) pair into the two polar slots.  sinθ ≥ 0 on [0, π], so the
+        encoding lands in the upper half-circle that _decode_polar recovers, and
+        _decode_polar(_encode_polar(θ)) == θ exactly.
+        """
+        return math.cos(theta), math.sin(theta)
+
     def _denormalize(self, val, param_type):
         """Map from [-1,1] to physical range"""
         min_val, max_val = self.param_ranges[param_type]
-        
-        # Special handling for angular parameters
         if param_type in ['photon_theta','photon_phi','theta', 'phi']:
             val = np.clip(val, -1.0, 1.0)
             return (val + 1) * (max_val - min_val)/2
@@ -2399,14 +2463,16 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                 vec[1] = -1.0            # mute Eγ′ prediction
 
             # zero every secondary block ≥ 1 for Compton / photo
-            if C > 4 and d_idx in (1, 2):
-                nsec = (C - 4) // 3
+            # (each secondary block is now 4 slots: [E, θcos, θsin, φ], based at 5+4k)
+            if C > 5 and d_idx in (1, 2):
+                nsec = (C - 5) // 4
                 for k in range(1, nsec):
-                    base = 4 + 3 * k
-                    vec[base:base + 3] = -1.0
-            # Pair: mask *positron* polar angle (slot 8); keep electron θ (slot 5)
-            if d_idx == 3 and len(vec) > 8:
-                vec[8] = -1.0
+                    base = 5 + 4 * k
+                    vec[base:base + 4] = -1.0
+            # Pair: mask *positron* polar angle (slots 10,11); keep electron θ (slots 6,7)
+            if d_idx == 3 and len(vec) > 11:
+                vec[10] = -1.0
+                vec[11] = -1.0
             
             return vec
             
@@ -2423,29 +2489,32 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
         cont_store = cont.copy()
         # ─────────────────────────────────────────────────────────────
         # 4) Angles extracted from the (possibly-masked) cont (per interaction)
-        # Important Note: 
+        # Important Note:  cont slot layout (0-based), polar angles as (cosθ, sinθ):
+        #   [0]=unused  [1]=photon E  [2]=photon θcos  [3]=photon θsin  [4]=photon φ
+        #   sec0: [5]=E [6]=θcos [7]=θsin [8]=φ   |   sec1: [9]=E [10]=θcos [11]=θsin [12]=φ
+        #   (tail [13]=mfp_sample [14]=mu_param handled in the distribution)
         # +----------+------------------+------------------+------------------------------------------+
         # | I Type   | Scattered Photon | Ejected Electrons| Continuous Parameters Layout & Training  |
         # +-----------------+------------------+------------------+-----------------------------------+
         # | Rayleigh | Yes (elastic)    | None             | Photon E(1)=unchanged,                   |
-        # |          |                  |                  | Photon θ,φ (2,3)                         |
+        # |          |                  |                  | Photon θcos,θsin,φ (2,3,4)               |
         # |          |                  |                  |                                          |
-        # | Compton  | Yes (inelastic)  | One electron     | Photon E(1), Photon θ,φ (2,3),           |
-        # |          |                  |                  | Electron E(4), Electron θ,φ (5,6)        |
+        # | Compton  | Yes (inelastic)  | One electron     | Photon E(1), θcos,θsin,φ (2,3,4),        |
+        # |          |                  |                  | Electron E(5), θcos,θsin,φ (6,7,8)       |
         # |          |                  |                  |                                          |
         # | Photo    | No (absorbed)    | One electron     | Photon E(1)=0 (masked),                  |
-        # |          |                  |                  | Photon θ,φ (2,3)=dummy (masked),         |
-        # |          |                  |                  | Electron E(4), Electron θ,φ (5,6)        |
+        # |          |                  |                  | Photon θcos,θsin,φ (2,3,4)=dummy,        |
+        # |          |                  |                  | Electron E(5), θcos,θsin,φ (6,7,8)       |
         # |          |                  |                  |                                          |
         # | PP       | No               | e- and e+ pair   | Photon E(1)=0 (masked),                  |
-        # |          |                  |                  | Photon θ,φ (2,3)=dummy (masked),         |
-        # |          |                  |                  | Electron E(4), Electron θ,φ (5,6),       |
-        # |          |                  |                  | Positron E(7), Positron θ,φ (8,9)        |
+        # |          |                  |                  | Photon θcos,θsin,φ (2,3,4)=dummy,        |
+        # |          |                  |                  | Electron E(5), θcos,θsin,φ (6,7,8),      |
+        # |          |                  |                  | Positron E(9), θcos,θsin,φ (10,11,12)    |
         # +----------+------------------+------------------+------------------------------------------+
         # ─────────────────────────────────────────────────────────────
     
-        photon_theta_pred = self._denormalize(cont[2], 'photon_theta')
-        photon_phi_pred = self._denormalize(cont[3], 'photon_phi')
+        photon_theta_pred = self._decode_polar(cont[2], cont[3])   # (cosθ, sinθ) → θ
+        photon_phi_pred = self._denormalize(cont[4], 'photon_phi')
 
         if discrete_choice in (2, 3):  # Photo-electric or Pair production
             # These interactions have no scattered photon
@@ -2455,7 +2524,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             agent_angle_degrees = math.degrees(photon_theta_pred)
         elif discrete_choice in (2, 3):  # Photo or Pair - use electron angle
             # Define theta_e for these cases
-            theta_e = self._denormalize(cont[5], 'theta')
+            theta_e = self._decode_polar(cont[6], cont[7])   # electron (cosθ, sinθ) → θ
             agent_angle_degrees = math.degrees(theta_e)
         else:
             agent_angle_degrees = 0.0  # fallback
@@ -2479,15 +2548,20 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             E_pred, sec_params = photon_energy_in, []
 
         elif discrete_choice == 1:        # Compton
-            # Compton has energy partition between photon and electron
-            raw_ph = max(0.0, self._denormalize(cont[1], 'energy'))
-            raw_el = max(0.0, self._denormalize(cont[4], 'energy'))
-            s = raw_ph + raw_el or 1.0
-            # Distribute available energy (no binding energy/Q value)
-            E_pred = (raw_ph / s) * avail_E
-            Ej     = (raw_el / s) * avail_E
-            theta_e = self._denormalize(cont[5], 'theta')
-            phi_e   = self._denormalize(cont[6], 'phi')
+            # Compton has ONE physical DOF: the scattering angle (KN-distributed).
+            # The outgoing photon energy is NOT free — it is fixed by the Compton
+            # kinematic relation E_out = E_in / (1 + α(1 − cosθ)) (energy–momentum
+            # conservation off a free electron), exactly as the MC reference derives
+            # it in sample_compton.  We therefore reconstruct E_out from the agent's
+            # predicted photon angle instead of reading a free energy partition; this
+            # puts every agent Compton event on the Klein–Nishina curve by construction
+            # (cf. Fig. 6) and leaves the angle as the single learnable Compton DOF.
+            # The recoil-electron energy then follows from energy conservation.
+            alpha_c = photon_energy_in / mec2
+            E_pred  = photon_energy_in / (1.0 + alpha_c * (1.0 - math.cos(photon_theta_pred)))  # Eγ′
+            Ej      = max(photon_energy_in - E_pred, 0.0)                                       # recoil e⁻
+            theta_e = self._decode_polar(cont[6], cont[7])            # sec0 (cosθ, sinθ) → θ
+            phi_e   = self._denormalize(cont[8], 'phi')               # sec0 φ
             dir_e   = rotate_direction(inc_dir, theta_e, phi_e)
             sec_params = [("electron", Ej, dir_e, "compton_e_pred")]
 
@@ -2495,8 +2569,8 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             # Photo-electric: photon completely absorbed, electron gets all avail_E
             E_pred = 0.0  # No scattered photon
             # Network angles for electron
-            theta_e = self._denormalize(cont[5], 'theta')
-            phi_e   = self._denormalize(cont[6], 'phi')
+            theta_e = self._decode_polar(cont[6], cont[7])           # sec0 (cosθ, sinθ) → θ
+            phi_e   = self._denormalize(cont[8], 'phi')              # sec0 φ
             dir_e   = rotate_direction(inc_dir, theta_e, phi_e)
             # Electron must get EXACTLY the available energy (after binding energy)
             sec_params = [("electron", avail_E, dir_e, "photo_pred")]
@@ -2506,20 +2580,20 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             E_pred = 0.0  # No scattered photon
 
             # Energy partition between e- and e+ (must sum to avail_E)
-            raw_e = max(0.0, self._denormalize(cont[4], 'energy'))
-            raw_p = max(0.0, self._denormalize(cont[7], 'energy'))
+            raw_e = max(0.0, self._denormalize(cont[5], 'energy'))   # sec0 (e-) E
+            raw_p = max(0.0, self._denormalize(cont[9], 'energy'))   # sec1 (e+) E
             s = raw_e + raw_p or 1.0
             Ej_e = (raw_e / s) * avail_E
             Ej_p = (raw_p / s) * avail_E
 
             # Electron angles — policy predicts independently
-            theta_e = self._denormalize(cont[5], 'theta')
-            phi_e   = self._denormalize(cont[6], 'phi')
+            theta_e = self._decode_polar(cont[6], cont[7])           # sec0 (cosθ, sinθ) → θ
+            phi_e   = self._denormalize(cont[8], 'phi')              # sec0 φ
             dir_e   = rotate_direction(inc_dir, theta_e, phi_e)
 
             # Positron angles — policy also predicts independently
-            theta_p = self._denormalize(cont[8], 'theta')
-            phi_p   = self._denormalize(cont[9], 'phi')
+            theta_p = self._decode_polar(cont[10], cont[11])         # sec1 (cosθ, sinθ) → θ
+            phi_p   = self._denormalize(cont[12], 'phi')             # sec1 φ
             dir_p   = rotate_direction(inc_dir, theta_p, phi_p)
 
             sec_params = [("electron", Ej_e, dir_e, "pair_e_pred"),
@@ -2588,7 +2662,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             "phys_fp":   dist_real,
             "phys_ang":  angle_radians,
             "phys_n_sec": len(real_secs),
-            "phys_proc":  PROC_NAMES.index(itype.split("_")[0]),
+            "phys_proc":  PROC_NAMES.index(itype),
             "phys_Eout": Eout
         })
         for k in range(self.NsecMax):
@@ -2661,58 +2735,58 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                 # write back into cont_store[•]
                 if disc_store == 0:                 # ── Rayleigh
                     # photon keeps its energy – only the angles matter
-                    cont_store[2] = norm(angle_radians, 'theta')      # θγ
-                    cont_store[3] = norm(real_phi,       'phi')       # φγ
+                    cont_store[2], cont_store[3] = self._encode_polar(angle_radians)  # θγ (cosθ, sinθ)
+                    cont_store[4] = norm(real_phi, 'phi')                             # φγ
 
                 elif disc_store == 1:               # ── Compton
                     # photon branch
-                    cont_store[1] = norm(Eout, 'energy')              # Eγ
-                    cont_store[2] = norm(angle_radians, 'theta')      # θγ
-                    cont_store[3] = norm(real_phi,       'phi')       # φγ
+                    cont_store[1] = norm(Eout, 'energy')                             # Eγ
+                    cont_store[2], cont_store[3] = self._encode_polar(angle_radians) # θγ (cosθ, sinθ)
+                    cont_store[4] = norm(real_phi, 'phi')                            # φγ
                     # single recoil electron (slot 0 in secondaries)
                     if real_secs:
                         eE, edir = real_secs[0][1], real_secs[0][2]
                         theta_e  = math.acos(np.clip(np.dot(inc_dir, edir), -1.0, 1.0))
                         phi_e    = self._extract_local_phi(inc_dir, edir, theta_e)
-                        cont_store[4] = norm(eE,      'energy')
-                        cont_store[5] = norm(theta_e, 'theta')
-                        cont_store[6] = norm(phi_e,   'phi')
+                        cont_store[5] = norm(eE, 'energy')                           # sec0 E
+                        cont_store[6], cont_store[7] = self._encode_polar(theta_e)   # sec0 (cosθ, sinθ)
+                        cont_store[8] = norm(phi_e, 'phi')                           # sec0 φ
 
                 elif disc_store == 2:               # ── Photoelectric
                     # no outgoing photon ⇒ Eγ = 0
                     cont_store[1] = norm(0.0, 'energy')
-                    cont_store[2] = norm(math.pi/2, 'theta')          # dummy
-                    cont_store[3] = norm(0.0,       'phi')
+                    cont_store[2], cont_store[3] = self._encode_polar(math.pi/2)     # dummy θγ
+                    cont_store[4] = norm(0.0, 'phi')
                     # ejected electron in secondary slot 0
                     if real_secs:
                         eE, edir = real_secs[0][1], real_secs[0][2]
                         theta_e  = math.acos(np.clip(np.dot(inc_dir, edir), -1.0, 1.0))
                         phi_e    = self._extract_local_phi(inc_dir, edir, theta_e)
-                        cont_store[4] = norm(eE,      'energy')
-                        cont_store[5] = norm(theta_e, 'theta')
-                        cont_store[6] = norm(phi_e,   'phi')
+                        cont_store[5] = norm(eE, 'energy')                           # sec0 E
+                        cont_store[6], cont_store[7] = self._encode_polar(theta_e)   # sec0 (cosθ, sinθ)
+                        cont_store[8] = norm(phi_e, 'phi')                           # sec0 φ
 
                 else:                               # ── Pair production
                     # no outgoing photon
                     cont_store[1] = norm(0.0, 'energy')
-                    cont_store[2] = norm(math.pi/2, 'theta')          
-                    cont_store[3] = norm(0.0,       'phi')
+                    cont_store[2], cont_store[3] = self._encode_polar(math.pi/2)     # dummy θγ
+                    cont_store[4] = norm(0.0, 'phi')
                     # electron  (secondary-0)
                     if len(real_secs) >= 1:
                         eE, edir = real_secs[0][1], real_secs[0][2]
                         theta_e  = math.acos(np.clip(np.dot(inc_dir, edir), -1.0, 1.0))
                         phi_e    = self._extract_local_phi(inc_dir, edir, theta_e)
-                        cont_store[4] = norm(eE,      'energy')
-                        cont_store[5] = norm(theta_e, 'theta')
-                        cont_store[6] = norm(phi_e,   'phi')
+                        cont_store[5] = norm(eE, 'energy')                           # sec0 E
+                        cont_store[6], cont_store[7] = self._encode_polar(theta_e)   # sec0 (cosθ, sinθ)
+                        cont_store[8] = norm(phi_e, 'phi')                           # sec0 φ
                     # positron (secondary-1)
                     if len(real_secs) >= 2:
                         pE, pdir = real_secs[1][1], real_secs[1][2]
                         theta_p  = math.acos(np.clip(np.dot(inc_dir, pdir), -1.0, 1.0))
-                        phi_p    = self._extract_local_phi(inc_dir, pdir, theta_p)
-                        cont_store[7] = norm(pE,      'energy')
-                        cont_store[8] = norm(theta_p, 'theta')
-                        cont_store[9] = norm(phi_p,   'phi')
+                        phi_p    = self._extract_local_phi(inc_dir, pdir, theta_e)
+                        cont_store[9] = norm(pE, 'energy')                           # sec1 E
+                        cont_store[10], cont_store[11] = self._encode_polar(theta_p) # sec1 (cosθ, sinθ)
+                        cont_store[12] = norm(phi_p, 'phi')                          # sec1 φ
 
         # 3. Apply proper masking based on the (possibly over-ridden) discrete choice
         cont_masked = _mask_cont(disc_store, cont_store)
@@ -3036,13 +3110,17 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                 r_phi_p = 0.0
 
             # ------------------------------------------------------------------
-            # 2) Compton e⁻ kinematic consistency           r_e_comp
+            # 2) Compton recoil-e⁻ angular consistency        r_e_comp
             # ------------------------------------------------------------------
+            # E_out is now fixed by Compton kinematics, so the photon (E, θ) sits on
+            # the KN curve and the recoil-electron ENERGY is exact by conservation
+            # (Ej ≡ E_in − E_out).  The old energy term abs(Ej − (E_in−E_pred)) was
+            # therefore identically zero and has been removed.  We keep only the soft
+            # electron-ANGLE consistency: nudge the predicted e⁻ angle toward the
+            # momentum-balanced value implied by the (now on-curve) photon kinematics.
             r_e_comp = 0.0
             if discrete_choice == 1:     # Compton only
-                # --- MC expectations from the *photon* part the agent has proposed
-                Ee_mc   = photon_energy_in - E_pred                            # MeV
-                # protect against division by zero
+                Ee_mc   = photon_energy_in - E_pred                            # MeV (exact)
                 if Ee_mc > 1e-15:
                     p_e_mc = math.sqrt(Ee_mc * (Ee_mc + 2*mec2))              # |p_e|
                     cos_th_e_mc = (photon_energy_in - E_pred*math.cos(photon_theta_pred)) \
@@ -3052,17 +3130,10 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
                 else:
                     th_e_mc = 0.0                                             # arbitrary
 
-                # --- agent’s electron proposal (already denormalised above)
-                Ee_pred = Ej
-                th_e_pred = theta_e
-
-                # --- penalties (relative errors, scaled to O(1))
-                lambda_E  = 0.05
+                # soft electron-angle consistency only (energy term was ≡0, removed)
                 lambda_th = 0.05
-                dE_rel   = abs(Ee_pred - Ee_mc) / max(Ee_mc, 1e-6)
-                dth_rel  = abs(th_e_pred - th_e_mc) / math.pi                 # 0…1
-
-                r_e_comp = - (lambda_E * dE_rel + lambda_th * dth_rel)
+                dth_rel   = abs(theta_e - th_e_mc) / math.pi                  # 0…1
+                r_e_comp  = - lambda_th * dth_rel
             # --------------------------------------------------------------
             # Pair production: energy-share consistency      r_E_pair
             # --------------------------------------------------------------
@@ -3272,7 +3343,7 @@ class WaterPhotonHybridEnvPenelope(gym.Env):
             print(f"  Phase = {self.phase}")
             # secondaries: true vs. predicted
             # inc_dir is the photon incident direction
-            # inc_dir = np.array([self.u, self.v, self.w], dtype=float)
+            inc_dir = np.array([self.u, self.v, self.w], dtype=float)
             for idx in range(self.NsecMax):
                 # true secondary
                 if idx < len(real_secs):
@@ -3564,9 +3635,24 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
         return torch.cat([cat_sample, gauss_masked, tail], dim=1)
 
     def mode(self) -> torch.Tensor:
-        cat_mode = self.cat_dist.mode().float().unsqueeze(-1)
-        gauss_mode = self.gauss_dist.mode()
-        return torch.cat([cat_mode, gauss_mode], dim=-1)
+        cat_mode   = self.cat_dist.mode().float().unsqueeze(-1)   # [B,1]
+        gauss_mode = torch.tanh(self.gauss_dist.mode())           # [B, n_continuous]
+
+        # The deterministic action must have the SAME layout as sample():
+        #   [discrete, gauss..., mfp_sample, mu_param]
+        # Previously mode() returned only [discrete, gauss...], so any
+        # deterministic call (e.g. model.predict(deterministic=True) or a greedy
+        # evaluation) produced an action that was 2 slots short. Downstream code
+        # that reads act[-1] (mu) and act[-2] (free path) would then silently read
+        # Gaussian angle/energy slots instead, corrupting evaluation.
+        # The deterministic ("mode") free path of an Exponential(rate=mu) is its
+        # mean, 1/mu.
+        mu_param   = torch.clamp(self.mu_param, 7.0e-2, 5.00e7)   # [B]
+        mfp_mode   = (1.0 / mu_param).unsqueeze(-1)               # [B,1]  (mean of Exp)
+        mu_param   = mu_param.unsqueeze(-1)                       # [B,1]
+        tail       = torch.cat([mfp_mode, mu_param], dim=1)       # [B,2]
+
+        return torch.cat([cat_mode, gauss_mode, tail], dim=-1)
 
     def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
         # first element is the discrete choice
@@ -3594,10 +3680,7 @@ class HybridCategoricalDiagGaussianDistribution(Distribution):
 
 
     def entropy(self) -> torch.Tensor:
-        # Entropy of Exponential(rate) = 1 + ln(1/rate) = 1 - ln(rate)
-        mu_param = torch.clamp(self.mu_param, 7.0e-2, 5.00e7)
-        exp_entropy = 1.0 - torch.log(mu_param + 1e-12)
-        return self.cat_dist.entropy() + self.gauss_dist.entropy() + exp_entropy
+        return self.cat_dist.entropy() + self.gauss_dist.entropy()
 
     def actions_from_params(self, params: torch.Tensor, deterministic=False) -> torch.Tensor:
         self.proba_distribution(params)
@@ -3735,6 +3818,9 @@ class NStepSAC(SAC):
                                  replay_data.actions)          # (B,1)
             q1 = q1.squeeze(-1);   q2 = q2.squeeze(-1)          # (B,)
 
+ 
+
+            lambda_aux = 0.1  
 
             critic_loss = F.mse_loss(q1, target_q) + F.mse_loss(q2, target_q) 
             self.tb_writer.add_scalar("critic_loss", critic_loss.cpu().item(), self.num_timesteps) 
@@ -3906,19 +3992,34 @@ class NStepSAC(SAC):
                     p_pol = torch.softmax(logits, dim=1)
                     discrete_entropy = -(p_pol * torch.log(p_pol + 1e-12)).sum(dim=1).mean()
     
-                    # Continuous entropy (from the Gaussian components)
+                    # Continuous entropy — computed TWO ways so they can be compared on TensorBoard:
+                    #  (1) sample-based, tanh-corrected:  -E[logp_pi] minus the discrete part.
+                    #      logp_pi carries the tanh Jacobian (and the MFP term), so this reflects the
+                    #      true bounded-action entropy (squashed Gaussian + Exponential MFP tail).
+                    #  (2) analytic Gaussian:  entropy of the *pre-squash* Gaussian only — ignores the
+                    #      tanh squashing and the tail, so it overstates (1)'s Gaussian part.
+                    #      The gap (2) - [(1) - mfp_tail] is, in expectation, the tanh-squashing effect.
+                    continuous_entropy = -logp_pi.mean() - discrete_entropy            # (1) sample-based
                     dist_for_ent = self.actor.get_action_dist_from_params(params)
-                    continuous_entropy = dist_for_ent.gauss_dist.entropy().mean()                   # Log to TensorBoard
-                    
+                    continuous_entropy_analytic = dist_for_ent.gauss_dist.entropy().mean()  # (2) analytic Gaussian
+                    # Differential entropy of the Exponential(rate=mu) MFP tail = 1 - ln(mu).
+                    mu_for_ent = torch.clamp(dist_for_ent.mu_param, 7.0e-2, 5.00e7)
+                    mfp_tail_entropy = (1.0 - torch.log(mu_for_ent + 1e-12)).mean()
+    
+                    # Log to TensorBoard
                     self.tb_writer.add_scalar("entropy/discrete", discrete_entropy.item(), self.num_timesteps)
                     self.tb_writer.add_scalar("entropy/continuous", continuous_entropy.item(), self.num_timesteps)
+                    self.tb_writer.add_scalar("entropy/continuous_analytic", continuous_entropy_analytic.item(), self.num_timesteps)
+                    self.tb_writer.add_scalar("entropy/mfp_tail", mfp_tail_entropy.item(), self.num_timesteps)
                     self.tb_writer.add_scalar("entropy/target", self.target_entropy, self.num_timesteps)
     
                     # Print to console every 100 updates
                     if self._n_updates % 1000 == 0:
                         print(f"Alpha: {self.ent_coef.item():.6f}")
                         print(f"Discrete entropy: {discrete_entropy.item():.4f}")
-                        print(f"Continuous entropy: {continuous_entropy.item():.4f}")
+                        print(f"Continuous entropy (sample,   tanh-corrected): {continuous_entropy.item():.4f}")
+                        print(f"Continuous entropy (analytic, pre-tanh Gauss): {continuous_entropy_analytic.item():.4f}")
+                        print(f"MFP tail entropy (1 - ln mu):                  {mfp_tail_entropy.item():.4f}")
                         print(f"Target entropy: {self.target_entropy:.4f}")
                         print(f"Entropy gap: {(discrete_entropy + continuous_entropy).item() + self.target_entropy:.4f}")
        
@@ -4026,7 +4127,9 @@ class HybridActor(Actor):
         n_bins = len(self.ebin_edges) - 1        # guaranteed ≥ 1 now
         print("[HybridActor] n_bins =", n_bins, flush=True)
 
-        # (duplicate register_buffer removed — already registered at line 3998)
+        self.register_buffer('bin_edges', torch.from_numpy(self.ebin_edges).to(device))
+        n_bins = len(self.ebin_edges) - 1
+        print(n_bins)
         self.true_prob = np.asarray(true_prob, dtype=np.float32)
         self.true_mfp_mean = np.asarray(true_mfp_mean, dtype=np.float32)
         self.energy_regime_boundaries = np.asarray(energy_regime_boundaries, dtype=np.float32)
@@ -4061,7 +4164,7 @@ class HybridActor(Actor):
         )
 #        nn.init.zeros_(self.continuous_head[-1].weight)
 #        nn.init.zeros_(self.continuous_head[-1].bias)
-        self.NsecMax = (n_continuous - 4) // 3
+        self.NsecMax = (n_continuous - 5) // 4   # photon block=5, each secondary block=4 (cos,sin polar)
         phys_dim  = 5 + 3 * self.NsecMax
         self.phys_backbone = nn.Sequential(
             nn.Linear(features_dim, 1024),
@@ -4781,8 +4884,11 @@ class CustomCritic(nn.Module):
         self.features_extractor = features_extractor
         self.n_discrete   = n_discrete
         self.n_tail       = n_tail
-        # compute “pure” continuous count
-        self.n_continuous = action_dim - self.n_discrete - self.n_tail
+        # The ACTION VECTOR carries the discrete choice as a single index slot
+        # (actions[:, 0]); n_discrete is the one-hot *width* used for the network
+        # input, NOT a slot count.  So strip exactly 1 discrete slot + the tail to
+        # recover the continuous (gauss) block width.
+        self.n_continuous = action_dim - 1 - self.n_tail
         assert self.n_continuous > 0, "action_dim too small for discrete + tail"
 
         # feature size (e.g. 512)
@@ -4884,7 +4990,7 @@ class HybridSACPolicy(SACPolicy):
         self._lr_schedule = lr_schedule
         self.n_discrete = kwargs.pop("n_discrete", 4)
         self.NsecMax = kwargs.pop("NsecMax", 2)
-        self.n_continuous = 4 + 3 * self.NsecMax
+        self.n_continuous = 5 + 4 * self.NsecMax   # photon [unused,E,θcos,θsin,φ]=5 + NsecMax×[E,θcos,θsin,φ]=4
         def dummy_schedule(_=None) -> float:
             return 1e-4  # or any constant
         super().__init__(
@@ -4895,7 +5001,11 @@ class HybridSACPolicy(SACPolicy):
         )
 
 #        self._build = lambda lr_sched: None
-        self.real_action_dim = 1 + self.n_continuous
+        # Full env action width: disc(1) + gauss(n_continuous) + tail(2)=[mfp_sample, mu_param].
+        # Previously this omitted the 2 tail dims, so the critic's action_dim was short by 2;
+        # combined with its arithmetic using the one-hot width as a slot count, the critic
+        # only saw the first 8 gauss dims and mislabeled the tail.  This is the full width.
+        self.real_action_dim = 1 + self.n_continuous + 2
 
         # Build the big feature extractor
         self.actor_features_extractor = self.features_extractor_class(
@@ -5377,8 +5487,9 @@ def pretrain_physics_head(
               actor.phys_backbone,
               actor.energy_head,
               actor.angle_head,
-              actor.nsec_head):
-        for p in g.parameters():
+              actor.nsec_head,
+              actor.proc_head):          # proc_head is pre-trained too (loss_proc) and
+        for p in g.parameters():         # feeds conditioning into energy/angle heads
             p.requires_grad = False
 
     torch.save({
@@ -5387,6 +5498,13 @@ def pretrain_physics_head(
         "energy_head"      : actor.energy_head.state_dict(),
         "angle_head"       : actor.angle_head.state_dict(),
         "nsec_head"        : actor.nsec_head.state_dict(),
+        # proc_head was previously trained during pre-training but NOT saved. Because
+        # its softmax (proc_probs) is concatenated into the conditioning of the energy
+        # and angle heads, omitting it meant that at SAC start the conditioning was
+        # driven by a randomly-initialised proc_head while energy/angle heads had been
+        # pre-trained against the *trained* proc_head — an immediate train/eval
+        # distribution mismatch. Save it so the conditioning is consistent.
+        "proc_head"        : actor.proc_head.state_dict(),
     }, save_path)
     print(f"✅  Physics head & extractor frozen and saved to '{save_path}'.")
 
@@ -5479,11 +5597,24 @@ def load_physics_head(actor, load_path: str = "physics_head_pretrained.pth"):
     actor.energy_head       .load_state_dict(ckpt['energy_head'])
     actor.angle_head        .load_state_dict(ckpt['angle_head'])
     actor.nsec_head         .load_state_dict(ckpt['nsec_head'])
+
     freeze_groups = [actor.features_extractor,
                  actor.phys_backbone,
                  actor.energy_head,
                  actor.angle_head,
                  actor.nsec_head]
+
+    # proc_head: load if the checkpoint contains it. Older checkpoints (saved before
+    # proc_head was added to the pre-trainer) will not have it; in that case proc_head
+    # keeps its current weights and we warn, because the energy/angle conditioning will
+    # be inconsistent until the physics head is re-pre-trained.
+    if 'proc_head' in ckpt:
+        actor.proc_head.load_state_dict(ckpt['proc_head'])
+        freeze_groups.append(actor.proc_head)
+    else:
+        print("⚠️  Checkpoint has no 'proc_head' — conditioning may be inconsistent. "
+              "Re-run pretrain_physics_head() to regenerate a complete checkpoint.")
+
     for g in freeze_groups:
         for p in g.parameters():
             p.requires_grad = False
@@ -5560,10 +5691,7 @@ def generate_mc_dataset(
         angle = math.acos(cos_t)
         sin_ang = math.sin(angle)
         cos_ang = math.cos(angle)
-        base_itype = itype.split("_")[0]
-        if base_itype not in PROC_NAMES:
-            continue  # skip edge-case interactions (photo_none, pair_subthresh, etc.)
-        proc_idx = PROC_NAMES.index(base_itype)
+        proc_idx = PROC_NAMES.index(itype) if itype in PROC_NAMES else -1
         # build phys_targets: [dist, angle, Eout, n_sec, sec0_E, θ, φ, ...]
         phys = [dist_real, sin_ang, cos_ang, Eout, len(secs)]
         for k in range(NsecMax):
@@ -5809,9 +5937,7 @@ def run_agent_shower(
         z_norm = (pz[i]-env.zmin)/(env.zmax-env.zmin)
         E_val = max(energies[i], 1e-3)
         E_norm = (E_val - 0.001)/(1.001-0.001)
-        logE_low  = math.log10(env.E_min)
-        logE_high = math.log10(env.E_max)
-        logE   = np.clip(math.log10(max(E_val, env.E_min)), logE_low, logE_high)
+        logE   = np.clip(math.log10(E_val), -3.0, 1.0)
         u,v,w  = ux[i], uy[i], uz[i]
         stepf  = steps[i]/max_steps
         local_step_norm = (steps[i] % env.n_multi) / env.n_multi
@@ -5828,12 +5954,10 @@ def run_agent_shower(
                            mfp_norm
         ], dtype=np.float32)
 
-        # cross‐sections — must match _get_obs: log-space normalisation
+        # cross‐sections
         coh,inc,pho,ppr,_ = data.partial_cs(E_val)
-        cs_raw = np.array([coh, inc, pho, ppr], dtype=np.float32) + 1e-30
-        log_cs = np.log10(cs_raw)
-        cs_norm = (log_cs - env.LOG_MIN) / (env.LOG_MAX - env.LOG_MIN)
-        cs_norm = np.clip(cs_norm, 0.0, 1.0)
+        tot = coh+inc+pho+ppr+1e-12
+        cs_norm = np.array([coh,inc,pho,ppr],dtype=np.float32)/tot
 
         # secondary history
         feats = []
@@ -5876,7 +6000,6 @@ def run_agent_shower(
             coords_y[i].append(py[i])
             coords_z[i].append(pz[i])
 
-        per_photon_sec_params = [[] for _ in range(curr)] 
         global_step = 0
         while np.any(alive) and global_step<max_steps:
             global_step+=1
@@ -5887,14 +6010,13 @@ def run_agent_shower(
             obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=model.device)
             # 1) get raw policy params (logits + gauss)
             params, _ = model.policy.actor.forward(obs_tensor)
-            
+            shell_onehot = [0, 0, 0, 0, 0]
             # 3) rebuild distribution and sample
             dist    = model.policy.actor.get_action_dist_from_params(params)
             sample  = dist.sample()
             actions = sample.cpu().detach().numpy()
             for batch_i, i in enumerate(idxs):
                 steps[i]+=1
-                shell_onehot = [0, 0, 0, 0, 0]
                 act = actions[batch_i]
                 disc = int(act[0])
                 process_names = ["rayleigh", "compton", "photo", "pair"]
@@ -5903,8 +6025,8 @@ def run_agent_shower(
                 photon_energy_in = energies[i]
                 # decode predictions
                 mfp_pred = act[-2]
-                th_pred   = env._denormalize(cont[2], 'photon_theta')
-                ph_pred   = env._denormalize(cont[3], 'photon_phi')
+                th_pred   = env._decode_polar(cont[2], cont[3])      # (cosθ, sinθ) → θ
+                ph_pred   = env._denormalize(cont[4], 'photon_phi')
                 shell = shell_onehot
                 # ——— Build predicted secondary energies & directions ———
                 # 1) Compute Q sink and available E
@@ -5925,32 +6047,33 @@ def run_agent_shower(
                     # Rayleigh: photon keeps full energy
                     E_out = photon_energy_in
                     sec_energies = []
-                elif disc in (1, 2):
-                    # Compton or Photoelectric: one electron
+                elif disc == 1:
+                    # Compton: outgoing photon energy fixed by the kinematic relation
+                    # E_out = E_in/(1 + α(1−cosθ)) from the predicted angle (KN curve);
+                    # recoil-electron energy follows from conservation. No free partition.
+                    alpha_c      = photon_energy_in / mec2
+                    E_out        = photon_energy_in / (1.0 + alpha_c * (1.0 - math.cos(th_pred)))
+                    sec_energies = [max(photon_energy_in - E_out, 0.0)]
+                elif disc == 2:
+                    # Photoelectric: photon fully absorbed; electron gets the available E.
+                    E_out        = 0.0
+                    sec_energies = [avail_E]
+                    th_pred = math.pi/2
+                    ph_pred = 0.0
+                else:
+                    # Pair production: two secondaries
                     raw = [
                         max(0.0, env._denormalize(cont[1], 'energy')),
-                        max(0.0, env._denormalize(cont[4], 'energy'))
+                        max(0.0, env._denormalize(cont[5], 'energy')),   # sec0 (e-) E
+                        max(0.0, env._denormalize(cont[9], 'energy'))    # sec1 (e+) E
                     ]
                     total = sum(raw)
                     if total > 0.0:
                         fracs = [r/total for r in raw]
                     else:
-                        fracs = [0.5, 0.5]
-                    E_out        = fracs[0] * avail_E
-                    sec_energies = [fracs[1] * avail_E]
-                    if disc in (2,):
-                        # photoelectric placeholder
-                        E_out  = 0.0
-                        th_pred = math.pi/2
-                        ph_pred = 0.0
-                else:
-                    # Pair production: two secondaries (no scattered photon)
-                    raw_e = max(0.0, env._denormalize(cont[4], 'energy'))
-                    raw_p = max(0.0, env._denormalize(cont[7], 'energy'))
-                    s = raw_e + raw_p or 1.0
+                        fracs = [1/3,1/3,1/3]
                     E_out        = 0.0  # no photon
-                    sec_energies = [(raw_e / s) * avail_E, (raw_p / s) * avail_E]
-                    fracs = [0.0, raw_e / s, raw_p / s]  # keep fracs[1], fracs[2] for downstream
+                    sec_energies = [fracs[1]*avail_E, fracs[2]*avail_E]
                     th_pred = math.pi/2
                     ph_pred = 0.0
                 # ——— end energy‐split ———
@@ -5965,17 +6088,17 @@ def run_agent_shower(
 
                 elif disc == 1:  # compton
                 # one predicted recoil electron
-                    Ej    = fracs[1] * avail_E  # or however you allocated it
-                    theta = env._denormalize(cont[4+3*0 + 1], 'theta')
-                    phi   = env._denormalize(cont[4+3*0 + 2], 'phi')
+                    Ej    = sec_energies[0]              # recoil e⁻ energy (conservation)
+                    theta = env._decode_polar(cont[6], cont[7])     # sec0 (cosθ, sinθ) → θ
+                    phi   = env._denormalize(cont[8], 'phi')        # sec0 φ
                     dir_j = rotate_direction((ux[i],uy[i],uz[i]), theta, phi)
                     sec_params.append(("electron", Ej, dir_j, "compton_e"))
 
                 elif disc == 2:  # photoelectric
                     # one predicted shell‐specific electron
-                    Ej    = fracs[1] * photon_energy_in
-                    theta = env._denormalize(cont[4+3*0 + 1], 'theta')
-                    phi   = env._denormalize(cont[4+3*0 + 2], 'phi')
+                    Ej    = sec_energies[0]             # ejected-electron energy (= avail_E)
+                    theta = env._decode_polar(cont[6], cont[7])     # sec0 (cosθ, sinθ) → θ
+                    phi   = env._denormalize(cont[8], 'phi')        # sec0 φ
                     dir_j = rotate_direction((ux[i],uy[i],uz[i]), theta, phi)
                     # pick the shell binding exactly as MC
                     shell_name, _ = data.water_shell_data.pick_shell(energies[i])
@@ -5985,14 +6108,14 @@ def run_agent_shower(
                     # two secondaries: e– and e+
                     # electron
                     Ej_e  = fracs[1] * avail_E
-                    theta = env._denormalize(cont[4+3*0 + 1], 'theta')
-                    phi   = env._denormalize(cont[4+3*0 + 2], 'phi')
+                    theta = env._decode_polar(cont[6], cont[7])     # sec0 (cosθ, sinθ) → θ
+                    phi   = env._denormalize(cont[8], 'phi')        # sec0 φ
                     dir_e = rotate_direction((ux[i],uy[i],uz[i]), theta, phi)
                     sec_params.append(("electron", Ej_e, dir_e, "pair_e"))
                     # positron
                     Ej_p  = fracs[2] * avail_E
-                    theta = env._denormalize(cont[4+3*1 + 1], 'theta')
-                    phi   = env._denormalize(cont[4+3*1 + 2], 'phi')
+                    theta = env._decode_polar(cont[10], cont[11])   # sec1 (cosθ, sinθ) → θ
+                    phi   = env._denormalize(cont[12], 'phi')       # sec1 φ
                     dir_p = rotate_direction((ux[i],uy[i],uz[i]), theta, phi)
                     sec_params.append(("positron", Ej_p, dir_p, "pair_p"))
 
@@ -6036,8 +6159,7 @@ def run_agent_shower(
                         )
 
                 inters[i].append(rec)
-                shell_oh[i] = list(shell_onehot)
-                per_photon_sec_params[i] = list(sec_params)  # store per photon
+                shell_oh[i] = shell_onehot
 
                 # advance state
                 ux[i],uy[i],uz[i] = new_dir
@@ -6061,7 +6183,7 @@ def run_agent_shower(
             })
             all_secs   .extend(sec_lists[i])
             all_inters .extend(inters[i])
-            recent_secs[i].extend(per_photon_sec_params[i])
+            recent_secs[i].extend(sec_params)
 
         start_idx += curr
 
@@ -6184,11 +6306,7 @@ def analyze_secondaries(secondaries):
     grouped.columns = ["Count", "Mean Energy (MeV)"]
     print("\nSecondary Electron Stats:")
     print(grouped)
-
-
-###############################################################################
-#   EVALUATION DATA EXPORT — add this function near the analysis functions
-###############################################################################
+    
 def save_evaluation_data(
     mc_tracks, mc_interactions, mc_secondaries, mc_dose,
     agent_tracks, agent_interactions, agent_secondaries, agent_dose,
@@ -6467,6 +6585,7 @@ def save_evaluation_data(
     print(f"\n✅ Saved {total_files} files to '{save_dir}/' ({total_size:.1f} MB)")
     print(f"   Key files: metadata.pkl, mc/agent_dose.npy, mc/agent_tracks.pkl,")
     print(f"              mc/agent_interactions.pkl, stats.pkl, summary.txt")
+
 
 def print_tracks_table(tracks, shower_type="MC", num_examples=5):
     import random, math, numpy as np
@@ -6798,23 +6917,9 @@ class PhaseSwitchCallback(BaseCallback):
                 b.phase = phase
 
 
+            # Reset energy curriculum when entering Phase 2
             if phase == 2:
                 print("🔄 Entering phase 2: Resetting energy curriculum to regime 0")
-                # Flush stale Phase 0-1 transitions — their rewards (r_disc)
-                # and random continuous actions would poison the Phase 2 critic.
-                self.model.replay_buffer = NStepReplayBuffer(
-                    buffer_size=self.model.replay_buffer.buffer_size,
-                    observation_space=self.model.observation_space,
-                    action_space=self.model.action_space,
-                    device=self.model.device,
-                    n_envs=1,
-                    gamma=self.model.gamma,
-                    n_steps=N_STEPS_RETURN,
-                    optimize_memory_usage=False,
-                )
-                self.model.learning_starts = self.model.num_timesteps + 256
-                print("🗑️  Replay buffer cleared for Phase 2 (stale r_disc transitions removed)")
-
                 for v in self.training_env.envs:
                     base = getattr(v, "env", v)
                     base.current_regime = 0  # Start energy curriculum over
@@ -6991,10 +7096,9 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
     )
     
     # If the policy file exists, load it. Otherwise, start training from scratch.
-    is_resume = os.path.exists(policy_file)
-    if is_resume:
+    if os.path.exists(policy_file):
         print(f"Existing policy file '{policy_file}' detected. Loading model to continue training.")
-        
+
         model = NStepSAC.load(
             "hybrid_sac_model.zip",  
             env=env,
@@ -7017,7 +7121,7 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
             ent_coef='auto',
             gamma=0.99,
             tau=0.001,
-            target_entropy=-10,
+            target_entropy=-13,
             force_reset=True,
         )
 #        delta = 0.6  # or whatever bump you want
@@ -7054,16 +7158,21 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
             if env.phase >= 2 and os.path.exists("dist_stats.pkl"):
                 with open("dist_stats.pkl", "rb") as f:
                     dist_dict = pickle.load(f)
-                if "kl_divergences" in dist_dict:
-                    env.kl_divergences = dist_dict["kl_divergences"]
-                if "dist_rewards" in dist_dict:
-                    env.dist_rewards = dist_dict["dist_rewards"]
-                if "angle_history" in dist_dict:
-                    for k, v in dist_dict["angle_history"].items():
-                        env.agent_angle_history[k] = deque(v, maxlen=1000)
-                if "target_distributions" in dist_dict:
-                    for k, v in dist_dict["target_distributions"].items():
-                        env.target_angle_distributions[k] = np.array(v)
+                # FIX: the previous code read "kl_divergences"/"dist_rewards"/
+                # "angle_history"/"target_distributions" — keys that NO saver in
+                # this file ever writes, so the whole block was dead and resume
+                # silently restarted the energy curriculum at regime 0.  The real
+                # dist_stats.pkl (OverwritingCheckpointCallback) is keyed by env
+                # index, each holding angle_*_per_bin + current_regime.
+                env_stats = dist_dict.get(0) if isinstance(dist_dict, dict) else None
+                if isinstance(env_stats, dict) and "current_regime" in env_stats:
+                    # Carry the energy-curriculum position across resume.
+                    env.current_regime = int(env_stats["current_regime"])
+                    print(f"✅  Energy-curriculum regime restored → {env.current_regime}")
+                # NOTE: the agent's own per-bin angle samples (angle_hist_per_bin)
+                # are deliberately NOT restored.  They were produced by the
+                # previous policy state; replaying them poisons the angular-KL
+                # reward.  The per-bin deques refill organically (~200 steps).
                 print(f"✅  Distribution matching stats restored")
 
         else:
@@ -7123,6 +7232,19 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
 
         # propagate to every env so _mask_cont() etc. read the right value
         _set_phase(model, current_phase)      # copies to model & envs
+
+        # ── Seed the phase-relative step counter on resume ──────────────────
+        # FIX: _phase_start_step is otherwise only updated by PhaseSwitchCallback
+        # when a phase boundary is *crossed* at run time.  On resume into a later
+        # phase it stays 0, so steps_in_phase = global_step − 0 = the absolute
+        # step count, which instantly drives the teacher-forcing decay
+        # (phases 1 & 3) to its floor.  Seed it to the step at which the resumed
+        # phase began so the decay measures progress *within* the phase.
+        _phase_start = phase_ends[current_phase - 1] if current_phase > 0 else 0
+        for _v in model.get_env().envs:
+            _b = getattr(_v, "env", _v)
+            _b._phase_start_step = _phase_start
+
         print(f"✅  Resuming in phase {current_phase}  "
               f"(num_timesteps={model.num_timesteps})")
 
@@ -7148,7 +7270,7 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
             ent_coef = 'auto',
             gamma = 0.99,
             tau = 0.001,
-            target_entropy = -10
+            target_entropy = -13
             # max_grad_norm = 0.5  # Add gradient clipping - might need tuning
         )
         model.policy.actor.true_mfp_mean = env.true_mfp_mean
@@ -7168,43 +7290,36 @@ def train_hybrid_sac(csv_path="Final_cross_sections.csv", total_timesteps=50000)
             print(f"✅  Histogram state restored "
                   f"(total counts = {int(env.cum_pred_hist.sum())})")
         elif env.phase >= 2 and os.path.exists("acc_stats.pkl"):
-            # Also load distribution matching statistics if they exist
+            # Also load distribution-matching statistics if they exist.
             if env.phase >= 2 and os.path.exists("dist_stats.pkl"):
                 with open("dist_stats.pkl", "rb") as f:
                     dist_dict = pickle.load(f)
-                if "kl_divergences" in dist_dict:
-                    env.kl_divergences = dist_dict["kl_divergences"]
-                if "dist_rewards" in dist_dict:
-                    env.dist_rewards = dist_dict["dist_rewards"]
-                if "angle_history" in dist_dict:
-                    for k, v in dist_dict["angle_history"].items():
-                        env.agent_angle_history[k] = deque(v, maxlen=1000)
-                if "target_distributions" in dist_dict:
-                    for k, v in dist_dict["target_distributions"].items():
-                        env.target_angle_distributions[k] = np.array(v)
+                # FIX: see resume branch — these reads targeted keys no saver
+                # writes (dead code).  Match the real env-indexed schema and skip
+                # the policy-stale agent angle history.  (For a true fresh start
+                # env.phase == 0, so this elif never runs; kept consistent for
+                # any externally-forced phase.)
+                env_stats = dist_dict.get(0) if isinstance(dist_dict, dict) else None
+                if isinstance(env_stats, dict) and "current_regime" in env_stats:
+                    env.current_regime = int(env_stats["current_regime"])
+                    print(f"✅  Energy-curriculum regime restored → {env.current_regime}")
                 print(f"✅  Distribution matching stats restored")
         else:
             print("⚠️  No saved histogram/distribution data found — starting from zero.")
 
         _set_phase(model, 0)      # only done on a brand-new network
-    physics_ckpt = "physics_head_pretrained.pth"
-    if not is_resume:
-        # Fresh start only: load pretrained physics head into the newly created model
+
+        # ── Load the pre-trained physics head ONLY for a brand-new network ──
+        # FIX: this load used to live *after* the if/else and therefore ran on
+        # every resume.  On resume the trained physics weights already live in
+        # the .zip; overwriting them with the (stale) pre-training checkpoint is
+        # exactly what produced the ~4× physics-loss spike we diagnosed.  The
+        # reload therefore belongs strictly in the fresh-start path.
+        physics_ckpt = "physics_head_pretrained.pth"
         if os.path.exists(physics_ckpt):
             load_physics_head(model.policy.actor, physics_ckpt)
         else:
             print("⚠️  No pre-trained physics head found; training from scratch.")
-    else:
-        # Resume: the .zip checkpoint already contains the evolved physics head
-        # and feature extractor weights. Overwriting them with the pretrained
-        # state would destroy co-adapted representations and spike all losses.
-        print("ℹ️  Resuming — physics head weights preserved from checkpoint.")   
-
-    # ── Temporary verification — remove after confirming Fix A works ──
-    with torch.no_grad():
-        sample_weight = model.policy.actor.features_extractor.block1[0].weight[0, :5]
-        print(f"[VERIFY] Feature extractor sample weights: {sample_weight}")
-    # ── End temporary verification ──
 
     ckpt_cb = OverwritingCheckpointCallback(save_freq=1000, save_path=policy_file, verbose=1)
     # === NEW: full state backup every 10k steps ===
@@ -7324,7 +7439,7 @@ def main():
             ent_coef = "auto",
             gamma = 0.99,
             tau = 0.001,
-            target_entropy = -10,
+            target_entropy = -13,
             force_reset = True,
         )
         with open("replay_buffer.pkl", "rb") as f:
