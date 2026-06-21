@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beam Weaver — Physics-informed RL for Photon Transport</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181b24;
+      --border: #2a2e3a;
+      --text: #e0e0e6;
+      --muted: #9a9caa;
+      --accent: #6c9cff;
+      --accent2: #a78bfa;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+    header {
+      padding: 64px 0 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    header .subtitle {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 auto 24px;
+    }
+    .badges {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .badges img { height: 22px; }
+    .meta {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .meta span { display: inline-flex; align-items: center; gap: 6px; }
+    section { padding: 40px 0; border-bottom: 1px solid var(--border); }
+    section:last-of-type { border-bottom: none; }
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--accent);
+    }
+    p { margin-bottom: 14px; color: var(--text); }
+    ul { padding-left: 20px; margin-bottom: 14px; }
+    li { margin-bottom: 6px; color: var(--text); }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--accent2);
+    }
+    .card p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cta {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 24px;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .cta:hover { opacity: 0.9; text-decoration: none; }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+    .authors { margin-top: 16px; }
+    .authors .author { margin-bottom: 12px; }
+    .authors .name { font-weight: 600; }
+    .authors .affil { font-size: 0.9rem; color: var(--muted); }
+    footer {
+      padding: 32px 0;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      background: var(--surface);
+      border-radius: 0 8px 8px 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Beam Weaver</h1>
+      <p class="subtitle">Physics-informed n-step reinforcement learning for stochastic photon transport in water</p>
+      <div class="badges">
+        <a href="https://doi.org/10.5281/zenodo.18994135"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.18994135.svg" alt="DOI"></a>
+        <a href="https://joss.theoj.org/papers/048f725c9d7ad766994683f478dbccd9"><img src="https://joss.theoj.org/papers/048f725c9d7ad766994683f478dbccd9/status.svg" alt="JOSS status"></a>
+      </div>
+      <div class="meta">
+        <span>Status: research prototype</span>
+        <span>License: Apache-2.0</span>
+        <span>Domain: radiation transport &amp; AI</span>
+      </div>
+    </header>
+
+    <section>
+      <blockquote>
+        Beam Weaver is a research software prototype for learning event-by-event photon transport in a homogeneous water phantom. It combines a custom Monte Carlo reference simulator, a physics-informed n-step Soft Actor-Critic reinforcement learning environment, and evaluation tools that compare learned particle histories against conventional transport outputs.
+      </blockquote>
+    </section>
+
+    <section>
+      <h2>What Beam Weaver Does</h2>
+      <p>Beam Weaver explores whether a <strong>Soft Actor-Critic (SAC)</strong> agent can learn the stochastic logic of photon transport in water at the <strong>event level</strong>, rather than only predicting final observables.</p>
+      <p>For each photon history, the code predicts:</p>
+      <ul>
+        <li>The next interaction type</li>
+        <li>The distance to the next interaction</li>
+        <li>Scattering geometry</li>
+        <li>The outgoing photon state</li>
+        <li>The number, energy, and direction of secondary particles</li>
+      </ul>
+      <p>This makes Beam Weaver a <strong>learned transport-engine prototype</strong> rather than a generic machine-learning regressor.</p>
+    </section>
+
+    <section>
+      <h2>Photon Interactions Modeled</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Rayleigh Scattering</h3>
+          <p>Coherent scattering with energy-dependent form factors for water.</p>
+        </div>
+        <div class="card">
+          <h3>Compton Scattering</h3>
+          <p>Incoherent scattering with recoil electron kinematics.</p>
+        </div>
+        <div class="card">
+          <h3>Photoelectric Absorption</h3>
+          <p>Shell-specific absorption with electron emission.</p>
+        </div>
+        <div class="card">
+          <h3>Pair Production</h3>
+          <p>Electron-positron pair creation with energy sharing.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Training Architecture</h2>
+      <p>Beam Weaver is trained in two stages:</p>
+      <ul>
+        <li><strong>Stage I — Pretraining:</strong> Supervised learning of a multi-head physics branch on Monte Carlo-generated labels (interaction type, free path, scattering angles, secondary particles).</li>
+        <li><strong>Stage II — Curriculum RL:</strong> A five-phase curriculum that progressively transitions from teacher-forced Monte Carlo supervision to autonomous policy learning using a hybrid n-step SAC framework.</li>
+      </ul>
+      <p>The RL objective is physics-regularized, combining the standard SAC loss with auxiliary physics losses for energy, angle, and interaction-type consistency.</p>
+    </section>
+
+    <section>
+      <h2>Quick Start</h2>
+      <pre><code># Create environment
+conda env create -f environment.yml
+conda activate beam-weaver
+
+# Or with pip
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Run Beam Weaver
+python Beam_weaver_0.1.0.py</code></pre>
+      <p>The script is interactive and supports: generating Monte Carlo data, pretraining the physics head, training a SAC model, evaluating trained models, and comparing MC vs. agent outputs.</p>
+    </section>
+
+    <section>
+      <h2>Authors</h2>
+      <div class="authors">
+        <div class="author">
+          <div class="name">Pedro Teles</div>
+          <div class="affil">Assistant Professor, Department of Physics and Astronomy, Faculty of Sciences, University of Porto</div>
+        </div>
+        <div class="author">
+          <div class="name">João Melo</div>
+          <div class="affil">MSc Student in Medical Physics, Department of Physics and Astronomy, Faculty of Sciences, University of Porto</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>References</h2>
+      <ul>
+        <li>F. Salvat. <em>PENELOPE-2018: A Code System for Monte Carlo Simulation of Electron and Photon Transport.</em> OECD/NEA, 2019.</li>
+        <li>T. Haarnoja et al. <em>Soft Actor-Critic: Off-Policy Maximum Entropy Deep RL with a Stochastic Actor.</em> ICML, 2018.</li>
+        <li>A. Raffin et al. <em>Stable-Baselines3: Reliable RL Implementations.</em> JMLR, 22:1–8, 2021.</li>
+        <li>J. H. Hubbell et al. <em>Atomic Form Factors, Incoherent Scattering Functions, and Photon Scattering Cross Sections.</em> J. Phys. Chem. Ref. Data, 4(3), 1975.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>Beam Weaver is released under the Apache License 2.0. Third-party data and dependencies remain under their respective licenses.</p>
+    </footer>
+  </div>
+</body>
+</html>
