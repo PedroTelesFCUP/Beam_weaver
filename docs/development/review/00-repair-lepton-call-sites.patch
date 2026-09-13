@@ -1,0 +1,20 @@
+--- a/beamweaver/transport.py
++++ b/beamweaver/transport.py
+@@ -389,7 +389,7 @@
+                 for sc in secs:
+                     if sc[0] in ("electron", "positron"):
+                         _dep, _lept_secs, _lled = transport_lepton_csda(
+-                            sc[1], sc[2], (x, y, z), dose, env, n_steps=5,
++                            sc[1], sc[2], (x, y, z), dose, env,
+                             Egrid=stopping_Egrid, S_col_vals=stopping_S_col,
+                             S_rad_vals=stopping_S_rad,
+                             is_positron=(sc[0] == "positron"), ecut=ecut)
+@@ -664,7 +664,7 @@
+         for sc in secs:
+             if sc[0] in ("electron", "positron"):
+                 _dep, _lept_secs, _lled = transport_lepton_csda(
+-                    sc[1], sc[2], (x, y, z), dose, env, n_steps=5,
++                    sc[1], sc[2], (x, y, z), dose, env,
+                     Egrid=self.ctx["stop_E"],
+                     S_col_vals=self.ctx["stop_col"],
+                     S_rad_vals=self.ctx["stop_rad"],

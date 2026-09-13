@@ -1,0 +1,7 @@
+{
+  "banner_exact": true,
+  "help_outputs_exact": 7,
+  "command_namespaces_exact": 9,
+  "menu_scenarios_exact": 6,
+  "energy_boundary_checks_passed": true
+}

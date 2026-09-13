@@ -1,0 +1,66 @@
+{
+  "passed": true,
+  "comparison": "stage 1 consolidation -> stage 2 canonical rest energy",
+  "direct_application_calls": true,
+  "harness_adapters_used": false,
+  "fixture_kind": "artificial tables; code regression, not water validation",
+  "neural_runtime": "2.14.0+cpu",
+  "exactly_preserved": {
+    "geometry": true,
+    "frame": true,
+    "transform_max_error": true,
+    "samplers": true,
+    "hc_override": true,
+    "reference_showers": true,
+    "runner_overrides": true,
+    "dataset_arrays": true,
+    "dataset_groups": true,
+    "neural_initial_state": true,
+    "neural_training_losses": true,
+    "neural_trained_state": true,
+    "neural_restored_state": true,
+    "neural_scalar_draws": true,
+    "neural_batch_draws": true,
+    "default_grid_values_and_hash": true,
+    "default_grid_pair_support_masks": true,
+    "learned_transport_rng_and_discrete_history_counts": true
+  },
+  "counts": {
+    "saved_arrays": 629,
+    "default_grid_energies": 141,
+    "trained_heads": 13,
+    "reference_histories": 18,
+    "learned_histories": 36
+  },
+  "intentional_changes": {
+    "pair_threshold_MeV": {
+      "before": 1.0219978,
+      "after": 1.02199790138
+    },
+    "new_dataset_metadata": [
+      "physics_constants",
+      "rayleigh_hc_keV_angstrom"
+    ],
+    "learned_reconstruction": "All six scalar/batch shower output digests changed, consistent with canonical rest energy being used in Compton and pair reconstruction. Random generator states and discrete history counts matched in this fixture.",
+    "ledger_roundoff": {
+      "largest_reference_error_MeV": 1.4210854715202004e-14,
+      "largest_learned_error_MeV": 8.881784197001252e-15
+    }
+  },
+  "changed_paths": [
+    ".dataset_numerical_metadata.pair_threshold_MeV",
+    ".dataset_numerical_metadata.physics_constants",
+    ".dataset_numerical_metadata.rayleigh_hc_keV_angstrom",
+    ".grids.pair_threshold",
+    ".neural.showers.(False, 0.05).output_sha256",
+    ".neural.showers.(False, 2.0).output_sha256",
+    ".neural.showers.(False, 5.0).max_ledger_error_MeV",
+    ".neural.showers.(False, 5.0).output_sha256",
+    ".neural.showers.(True, 0.05).max_ledger_error_MeV",
+    ".neural.showers.(True, 0.05).output_sha256",
+    ".neural.showers.(True, 2.0).output_sha256",
+    ".neural.showers.(True, 5.0).max_ledger_error_MeV",
+    ".neural.showers.(True, 5.0).output_sha256"
+  ],
+  "unexpected_changes": []
+}

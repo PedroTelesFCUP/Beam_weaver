@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beamweaver"
+dynamic = ["version"]
+description = "Factorized learned photon transport and a reference Monte Carlo engine"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "pandas>=1.5", "matplotlib>=3.6"]
+license = {text = "Apache-2.0"}
+authors = [{name = "Pedro Teles"}]
+
+[project.urls]
+Repository = "https://github.com/PedroTelesFCUP/Beam_weaver"
+Issues = "https://github.com/PedroTelesFCUP/Beam_weaver/issues"
+
+[project.optional-dependencies]
+learn = ["torch>=2.1"]
+
+[project.scripts]
+beamweaver = "beamweaver.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["beamweaver*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "beamweaver.constants.BW_VERSION"}

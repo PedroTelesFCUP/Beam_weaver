@@ -1,0 +1,1346 @@
+{
+  "source_sha256": "e9ac773e89c3ffca8c1de61408c6e53df906abae72df0f1b3781ed6f39408647",
+  "source_lines": 8823,
+  "definitions": [
+    {
+      "original_name": "WaterPhotoShellData",
+      "original_lines": [
+        110,
+        191
+      ],
+      "status": "retained or adapted",
+      "current_name": "WaterPhotoShellData",
+      "module": "materials.py"
+    },
+    {
+      "original_name": "_kn_dcs",
+      "original_lines": [
+        259,
+        262
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "ComptonSampler",
+      "original_lines": [
+        267,
+        351
+      ],
+      "status": "retained or adapted",
+      "current_name": "ComptonEnergyTransferSampler",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "PenelopeLikeWaterData",
+      "original_lines": [
+        356,
+        555
+      ],
+      "status": "retained or adapted",
+      "current_name": "WaterPhotonData",
+      "module": "materials.py"
+    },
+    {
+      "original_name": "rotate_direction",
+      "original_lines": [
+        560,
+        599
+      ],
+      "status": "retained or adapted",
+      "current_name": "rotate_direction",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "sample_rayleigh",
+      "original_lines": [
+        601,
+        665
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_rayleigh_event",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "sample_compton",
+      "original_lines": [
+        667,
+        725
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_compton_event",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "sample_dipole_direction",
+      "original_lines": [
+        728,
+        737
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_sauter_dcs_shape",
+      "original_lines": [
+        747,
+        752
+      ],
+      "status": "retained or adapted",
+      "current_name": "_sauter_dcs_shape",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_sauter_envelope_max",
+      "original_lines": [
+        755,
+        764
+      ],
+      "status": "retained or adapted",
+      "current_name": "_sauter_envelope_max",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "sample_photoelectric_forced",
+      "original_lines": [
+        766,
+        790
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_photoelectric_event_for_shell",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "sample_photoelectric",
+      "original_lines": [
+        793,
+        832
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_photoelectric_event",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_pair_fC",
+      "original_lines": [
+        855,
+        861
+      ],
+      "status": "retained or adapted",
+      "current_name": "_pair_fC",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_pair_F0",
+      "original_lines": [
+        863,
+        870
+      ],
+      "status": "retained or adapted",
+      "current_name": "_pair_F0",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_pair_g1g2",
+      "original_lines": [
+        872,
+        880
+      ],
+      "status": "retained or adapted",
+      "current_name": "_pair_g1g2",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_pair_phi12",
+      "original_lines": [
+        882,
+        887
+      ],
+      "status": "retained or adapted",
+      "current_name": "_pair_phi12",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_pair_sample_eps",
+      "original_lines": [
+        889,
+        931
+      ],
+      "status": "retained or adapted",
+      "current_name": "_pair_sample_eps",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "_pair_lepton_costheta",
+      "original_lines": [
+        933,
+        945
+      ],
+      "status": "retained or adapted",
+      "current_name": "_pair_lepton_costheta",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "sample_pair",
+      "original_lines": [
+        947,
+        977
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_pair_event",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "photon_interact",
+      "original_lines": [
+        979,
+        992
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_photon_interaction",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "load_stopping_power",
+      "original_lines": [
+        997,
+        1004
+      ],
+      "status": "retained or adapted",
+      "current_name": "load_stopping_power",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "stopping_power",
+      "original_lines": [
+        1006,
+        1012
+      ],
+      "status": "retained or adapted",
+      "current_name": "stopping_power",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "transport_lepton_csda",
+      "original_lines": [
+        1014,
+        1182
+      ],
+      "status": "retained or adapted",
+      "current_name": "transport_lepton_csda",
+      "module": "physics.py"
+    },
+    {
+      "original_name": "transport_electron_csda",
+      "original_lines": [
+        1185,
+        1194
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "sample_brem_energy",
+      "original_lines": [
+        1197,
+        1227
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "transport_electron_condensed_history",
+      "original_lines": [
+        1229,
+        1473
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "accept_prob_compton",
+      "original_lines": [
+        1480,
+        1521
+      ],
+      "status": "retained or adapted",
+      "current_name": "compton_angular_distribution",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "accept_prob_rayleigh",
+      "original_lines": [
+        1524,
+        1563
+      ],
+      "status": "retained or adapted",
+      "current_name": "rayleigh_angular_distribution",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "accept_prob_photo",
+      "original_lines": [
+        1566,
+        1612
+      ],
+      "status": "retained or adapted",
+      "current_name": "photo_angular_distribution",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "accept_prob_pair",
+      "original_lines": [
+        1615,
+        1667
+      ],
+      "status": "retained or adapted",
+      "current_name": "pair_angular_distribution",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "accept_prob",
+      "original_lines": [
+        1670,
+        1679
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "WaterPhotonHybridEnvPenelope",
+      "original_lines": [
+        1684,
+        1990
+      ],
+      "status": "retained or adapted",
+      "current_name": "WaterPhantom",
+      "module": "geometry.py"
+    },
+    {
+      "original_name": "OptimizedFeatureExtractor",
+      "original_lines": [
+        1999,
+        2040
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "TransportKernel",
+      "original_lines": [
+        2045,
+        2466
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "run_mc_shower",
+      "original_lines": [
+        2469,
+        2678
+      ],
+      "status": "retained or adapted",
+      "current_name": "run_reference_transport",
+      "module": "transport.py"
+    },
+    {
+      "original_name": "_validate_dataset_v3_file",
+      "original_lines": [
+        2702,
+        2732
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_resolve_active_dataset_path",
+      "original_lines": [
+        2735,
+        2747
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_activate_dataset_path",
+      "original_lines": [
+        2750,
+        2758
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "PhysicsEvent",
+      "original_lines": [
+        2763,
+        2768
+      ],
+      "status": "retained or adapted",
+      "current_name": "PhotonCollisionEvent",
+      "module": "events.py"
+    },
+    {
+      "original_name": "PhysicsTransportDistribution",
+      "original_lines": [
+        2771,
+        3047
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "build_transport_obs",
+      "original_lines": [
+        3051,
+        3075
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "build_transport_obs_batch",
+      "original_lines": [
+        3079,
+        3111
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "ExecutionAudit",
+      "original_lines": [
+        3117,
+        3154
+      ],
+      "status": "retained or adapted",
+      "current_name": "ExecutionAudit",
+      "module": "audit.py"
+    },
+    {
+      "original_name": "PhysicsExecutionLogger",
+      "original_lines": [
+        3157,
+        3317
+      ],
+      "status": "retained or adapted",
+      "current_name": "TransportExecutionLogger",
+      "module": "audit.py"
+    },
+    {
+      "original_name": "_ascii_bar",
+      "original_lines": [
+        3325,
+        3327
+      ],
+      "status": "retained or adapted",
+      "current_name": "_ascii_bar",
+      "module": "transport.py"
+    },
+    {
+      "original_name": "print_ascii_hist",
+      "original_lines": [
+        3330,
+        3342
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "print_ascii_hist_pair",
+      "original_lines": [
+        3345,
+        3362
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_ascii_table",
+      "original_lines": [
+        3365,
+        3376
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_ks_two_sample",
+      "original_lines": [
+        3379,
+        3386
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "generate_mc_dataset_v3",
+      "original_lines": [
+        3390,
+        3672
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "run_v029c_validation",
+      "original_lines": [
+        3676,
+        3800
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "validate_local_kernel_v029f",
+      "original_lines": [
+        3804,
+        3953
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_tbl_lines",
+      "original_lines": [
+        3967,
+        3985
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_mini_hist_lines",
+      "original_lines": [
+        3988,
+        3997
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_LiveTransportDashboard",
+      "original_lines": [
+        4000,
+        4062
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_pdd_metrics",
+      "original_lines": [
+        4065,
+        4074
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_ascii_pdd_overlay",
+      "original_lines": [
+        4077,
+        4107
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_split_polylines",
+      "original_lines": [
+        4110,
+        4127
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_track_pathlen",
+      "original_lines": [
+        4130,
+        4135
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_ledger",
+      "original_lines": [
+        4138,
+        4139
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_closure",
+      "original_lines": [
+        4142,
+        4147
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_escaped_gamma",
+      "original_lines": [
+        4150,
+        4156
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_banked_counts",
+      "original_lines": [
+        4159,
+        4169
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_arm_stats",
+      "original_lines": [
+        4172,
+        4208
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_draw_shower_panels",
+      "original_lines": [
+        4211,
+        4239
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_render_shower_3d",
+      "original_lines": [
+        4242,
+        4260
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_obs_regen_shower3d",
+      "original_lines": [
+        4263,
+        4282
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_emit_comparison_observability",
+      "original_lines": [
+        4285,
+        4366
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_theta_by_channel",
+      "original_lines": [
+        4370,
+        4377
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "run_mc_agent_comparison",
+      "original_lines": [
+        4380,
+        4711
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "regenerate_comparison_report",
+      "original_lines": [
+        4714,
+        4880
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "run_physics_head_shower",
+      "original_lines": [
+        4883,
+        5138
+      ],
+      "status": "retained or adapted",
+      "current_name": "run_learned_transport",
+      "module": "transport.py"
+    },
+    {
+      "original_name": "_HistorySlot",
+      "original_lines": [
+        5143,
+        5403
+      ],
+      "status": "retained or adapted",
+      "current_name": "_HistorySlot",
+      "module": "transport.py"
+    },
+    {
+      "original_name": "run_physics_head_shower_batched",
+      "original_lines": [
+        5406,
+        5506
+      ],
+      "status": "retained or adapted",
+      "current_name": "run_learned_transport_batched",
+      "module": "transport.py"
+    },
+    {
+      "original_name": "verify_batched_inference_equivalence",
+      "original_lines": [
+        5509,
+        5583
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "load_transport_kernel_v028",
+      "original_lines": [
+        5587,
+        5633
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_hash_state",
+      "original_lines": [
+        5636,
+        5644
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "train_shell_head_v029j",
+      "original_lines": [
+        5647,
+        5876
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "validate_shell_head_fixed_energies",
+      "original_lines": [
+        5879,
+        5992
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "evaluate_physics_head",
+      "original_lines": [
+        5995,
+        6095
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "pretrain_transport_kernel_v028",
+      "original_lines": [
+        6099,
+        6921
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "_ks_np",
+      "original_lines": [
+        6924,
+        6929
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "invariance_probe_v028",
+      "original_lines": [
+        6932,
+        6960
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "bw4_norm_logE",
+      "original_lines": [
+        7016,
+        7019
+      ],
+      "status": "retained or adapted",
+      "current_name": "norm_logE",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_k_invA",
+      "original_lines": [
+        7022,
+        7023
+      ],
+      "status": "retained or adapted",
+      "current_name": "k_invA",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_q2max",
+      "original_lines": [
+        7026,
+        7027
+      ],
+      "status": "retained or adapted",
+      "current_name": "q2max",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_q2_from_cos",
+      "original_lines": [
+        7030,
+        7031
+      ],
+      "status": "retained or adapted",
+      "current_name": "q2_from_cos",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_cos_from_q2",
+      "original_lines": [
+        7034,
+        7035
+      ],
+      "status": "retained or adapted",
+      "current_name": "cos_from_q2",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_lq2r_from_cos",
+      "original_lines": [
+        7038,
+        7043
+      ],
+      "status": "retained or adapted",
+      "current_name": "lq2r_from_cos",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_cos_from_lq2r",
+      "original_lines": [
+        7046,
+        7047
+      ],
+      "status": "retained or adapted",
+      "current_name": "cos_from_lq2r",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_tau_min",
+      "original_lines": [
+        7050,
+        7051
+      ],
+      "status": "retained or adapted",
+      "current_name": "tau_min",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_u_from_tau",
+      "original_lines": [
+        7054,
+        7055
+      ],
+      "status": "retained or adapted",
+      "current_name": "u_from_tau",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_tau_from_u",
+      "original_lines": [
+        7058,
+        7059
+      ],
+      "status": "retained or adapted",
+      "current_name": "tau_from_u",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_cos_from_tau",
+      "original_lines": [
+        7062,
+        7064
+      ],
+      "status": "retained or adapted",
+      "current_name": "cos_from_tau",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_transform_selftest",
+      "original_lines": [
+        7067,
+        7083
+      ],
+      "status": "retained or adapted",
+      "current_name": "transform_selftest",
+      "module": "coordinates.py"
+    },
+    {
+      "original_name": "bw4_grids",
+      "original_lines": [
+        7086,
+        7098
+      ],
+      "status": "retained or adapted",
+      "current_name": "build_energy_grids",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "_bw4_seed",
+      "original_lines": [
+        7101,
+        7103
+      ],
+      "status": "retained or adapted",
+      "current_name": "deterministic_seed",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "_bw4_tp",
+      "original_lines": [
+        7109,
+        7111
+      ],
+      "status": "retained or adapted",
+      "current_name": "_direction_to_angles",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_mc_process",
+      "original_lines": [
+        7114,
+        7118
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_process_counts",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_mc_shell",
+      "original_lines": [
+        7121,
+        7125
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_shell_counts",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_mc_ray",
+      "original_lines": [
+        7128,
+        7137
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_rayleigh_training_data",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_mc_comp",
+      "original_lines": [
+        7140,
+        7150
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_compton_training_data",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_mc_photo",
+      "original_lines": [
+        7153,
+        7161
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_photoelectric_training_data",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_mc_pair",
+      "original_lines": [
+        7164,
+        7181
+      ],
+      "status": "retained or adapted",
+      "current_name": "sample_pair_training_data",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "_bw4_conds",
+      "original_lines": [
+        7184,
+        7195
+      ],
+      "status": "retained or adapted",
+      "current_name": "_factor_conditions",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "_bw4_null_kl",
+      "original_lines": [
+        7202,
+        7211
+      ],
+      "status": "retained or adapted",
+      "current_name": "_estimate_null_kl",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "_bw4_floor",
+      "original_lines": [
+        7214,
+        7230
+      ],
+      "status": "retained or adapted",
+      "current_name": "_representation_floor",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_generate_schema_v4",
+      "original_lines": [
+        7234,
+        7305
+      ],
+      "status": "retained or adapted",
+      "current_name": "generate_dataset",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_derive_edges",
+      "original_lines": [
+        7308,
+        7334
+      ],
+      "status": "retained or adapted",
+      "current_name": "derive_edges",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_edge_sanity_check",
+      "original_lines": [
+        7337,
+        7396
+      ],
+      "status": "retained or adapted",
+      "current_name": "edge_sanity_check",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_emit_generator_spec",
+      "original_lines": [
+        7399,
+        7416
+      ],
+      "status": "retained or adapted",
+      "current_name": "write_generator_spec",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "ConditionalCategoricalHead",
+      "original_lines": [
+        7420,
+        7430
+      ],
+      "status": "retained or adapted",
+      "current_name": "ConditionalCategoricalHead",
+      "module": "policy.py"
+    },
+    {
+      "original_name": "LearnableLogits",
+      "original_lines": [
+        7433,
+        7444
+      ],
+      "status": "retained or adapted",
+      "current_name": "UnconditionalCategoricalHead",
+      "module": "policy.py"
+    },
+    {
+      "original_name": "GenerativeTransportPolicy",
+      "original_lines": [
+        7468,
+        7836
+      ],
+      "status": "retained or adapted",
+      "current_name": "GenerativeTransportPolicy",
+      "module": "policy.py"
+    },
+    {
+      "original_name": "_v4_nullctx",
+      "original_lines": [
+        7840,
+        7841
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    },
+    {
+      "original_name": "bw4_reference_sampler_guard",
+      "original_lines": [
+        7845,
+        7871
+      ],
+      "status": "retained or adapted",
+      "current_name": "reference_sampler_guard",
+      "module": "audit.py"
+    },
+    {
+      "original_name": "bw4_restore_factor",
+      "original_lines": [
+        7874,
+        7884
+      ],
+      "status": "retained or adapted",
+      "current_name": "restore_factor",
+      "module": "training.py"
+    },
+    {
+      "original_name": "_bw4_masked_ce",
+      "original_lines": [
+        7888,
+        7893
+      ],
+      "status": "retained or adapted",
+      "current_name": "_masked_ce",
+      "module": "training.py"
+    },
+    {
+      "original_name": "_bw4_cond_E",
+      "original_lines": [
+        7896,
+        7897
+      ],
+      "status": "retained or adapted",
+      "current_name": "_energy_from_group_key",
+      "module": "training.py"
+    },
+    {
+      "original_name": "bw4_factor_tensors",
+      "original_lines": [
+        7900,
+        7980
+      ],
+      "status": "retained or adapted",
+      "current_name": "factor_tensors",
+      "module": "training.py"
+    },
+    {
+      "original_name": "bw4_train_factor",
+      "original_lines": [
+        7983,
+        8091
+      ],
+      "status": "retained or adapted",
+      "current_name": "train_factor",
+      "module": "training.py"
+    },
+    {
+      "original_name": "_bw4_update_manifest",
+      "original_lines": [
+        8094,
+        8102
+      ],
+      "status": "retained or adapted",
+      "current_name": "_update_training_manifest",
+      "module": "training.py"
+    },
+    {
+      "original_name": "bw4_train_complete",
+      "original_lines": [
+        8105,
+        8130
+      ],
+      "status": "retained or adapted",
+      "current_name": "train_policy",
+      "module": "training.py"
+    },
+    {
+      "original_name": "_bw4_head_probs",
+      "original_lines": [
+        8134,
+        8185
+      ],
+      "status": "retained or adapted",
+      "current_name": "_head_probs",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "_bw4_head_sample",
+      "original_lines": [
+        8188,
+        8197
+      ],
+      "status": "retained or adapted",
+      "current_name": "_head_sample",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "bw4_local_validation",
+      "original_lines": [
+        8200,
+        8366
+      ],
+      "status": "retained or adapted",
+      "current_name": "validate_policy",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "bw4_four_arm_comparison",
+      "original_lines": [
+        8370,
+        8448
+      ],
+      "status": "retained or adapted",
+      "current_name": "compare_transport",
+      "module": "evaluation.py"
+    },
+    {
+      "original_name": "bw4_single_energy_eval",
+      "original_lines": [
+        8452,
+        8514
+      ],
+      "status": "retained or adapted",
+      "current_name": "evaluate_transport",
+      "module": "evaluation.py"
+    },
+    {
+      "original_name": "bw4_regenerate_reports",
+      "original_lines": [
+        8517,
+        8541
+      ],
+      "status": "retained or adapted",
+      "current_name": "regenerate_reports",
+      "module": "reporting.py"
+    },
+    {
+      "original_name": "bw4_edges_from_dataset",
+      "original_lines": [
+        8545,
+        8550
+      ],
+      "status": "retained or adapted",
+      "current_name": "load_dataset_edges",
+      "module": "dataset.py"
+    },
+    {
+      "original_name": "bw4_new_policy",
+      "original_lines": [
+        8553,
+        8559
+      ],
+      "status": "retained or adapted",
+      "current_name": "create_policy",
+      "module": "training.py"
+    },
+    {
+      "original_name": "bw4_menu",
+      "original_lines": [
+        8563,
+        8661
+      ],
+      "status": "retained or adapted",
+      "current_name": "interactive_menu",
+      "module": "cli.py"
+    },
+    {
+      "original_name": "preflight_validate",
+      "original_lines": [
+        8664,
+        8782
+      ],
+      "status": "retained or adapted",
+      "current_name": "validate_reference_samplers",
+      "module": "validation.py"
+    },
+    {
+      "original_name": "print_startup_banner",
+      "original_lines": [
+        8785,
+        8794
+      ],
+      "status": "removed",
+      "current_name": null,
+      "module": null
+    }
+  ]
+}

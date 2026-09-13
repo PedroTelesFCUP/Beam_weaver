@@ -1,0 +1,11 @@
+Beam Weaver
+Copyright (c) 2025–2026 Pedro Teles & João Melo
+Department of Physics and Astronomy, Faculty of Sciences,
+University of Porto, Portugal.
+
+The current package derives from the Beam Weaver 0.4.0 implementation.
+Its source hash, extraction inventory and verification limits are recorded
+in docs/development/CLEANUP.md and the accompanying change record.
+The water tables are retained from the existing repository. Their provenance
+and licensing boundaries are described in docs/water-data.md and
+LICENSE-THIRD-PARTY.md. Trained weights are not bundled.

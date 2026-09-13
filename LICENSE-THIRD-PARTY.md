@@ -13,7 +13,11 @@ It does **not** automatically relicense:
 ## Important boundaries
 
 ### Dependencies
-Typical runtime dependencies such as PyTorch, Gymnasium, NumPy, pandas, Matplotlib, IPython, and Stable-Baselines3 remain under their own licenses.
+Runtime dependencies NumPy, pandas and Matplotlib, and the optional learning dependency PyTorch, remain under their own licenses.
+
+### Water tables
+
+The six CSV tables are retained unchanged from the earlier repository. See [docs/water-data.md](docs/water-data.md) for the documented sources and table conventions. The code license does not change the terms of external data.
 
 
 ### Publications

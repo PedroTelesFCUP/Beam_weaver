@@ -5,16 +5,24 @@ type: software
 authors:
   - family-names: Teles
     given-names: Pedro
+    orcid: "https://orcid.org/0000-0003-2705-7077"
     affiliation: "Department of Physics and Astronomy, Faculty of Sciences, University of Porto"
-  - family-names: Melo
-    given-names: João
-    affiliation: "Department of Physics and Astronomy, Faculty of Sciences, University of Porto"
-version: 0.1.0
-doi: 10.5281/zenodo.18994135
+version: 0.4.0
 license: Apache-2.0
-repository-code: "https://github.com/PedroTelesFCUP/beam-weaver"
+repository-code: "https://github.com/PedroTelesFCUP/Beam_weaver"
 abstract: >
-  Research software implementing a custom hybrid Soft Actor–Critic agent,
-  a Monte Carlo reference simulator, and evaluation utilities for photon
-  transport in water. The code models Rayleigh scattering, Compton scattering,
-  photoelectric absorption, and pair production in a homogeneous water phantom.
+  Research software for photon transport in water using thirteen disjoint
+  stochastic heads trained by cross-entropy on Monte Carlo collision samples.
+  The package includes a reference Monte Carlo engine, dataset generation,
+  training, audited learned transport and comparison tools. Free-flight
+  sampling and approximate electron/positron transport use explicit physics.
+references:
+  - type: software
+    title: "Beam Weaver: earlier SAC release"
+    authors:
+      - family-names: Teles
+        given-names: Pedro
+      - family-names: Melo
+        given-names: João
+    version: 0.1.0
+    doi: 10.5281/zenodo.18994135
