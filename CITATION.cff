@@ -8,6 +8,8 @@ authors:
     orcid: "https://orcid.org/0000-0003-2705-7077"
     affiliation: "Department of Physics and Astronomy, Faculty of Sciences, University of Porto"
 version: 0.4.0
+doi: 10.5281/zenodo.22739031
+date-released: 2026-09-13
 license: Apache-2.0
 repository-code: "https://github.com/PedroTelesFCUP/Beam_weaver"
 abstract: >

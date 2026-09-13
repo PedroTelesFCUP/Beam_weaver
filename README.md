@@ -144,7 +144,7 @@ Run regression checks with `python -m unittest discover -s tests -v`. Neural che
 
 ## Citation, history and license
 
-The project’s persistent, all-versions DOI is **[10.5281/zenodo.18994134](https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used when available, and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). The [changelog](CHANGELOG.md) links the preserved earlier releases. The historical version DOIs identify those earlier archives, not version 0.4.0.
+The Zenodo archive for **v0.4.0** is **[10.5281/zenodo.22739031](https://doi.org/10.5281/zenodo.22739031)**. The project’s persistent, all-versions DOI is **[10.5281/zenodo.18994134](https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). The [changelog](CHANGELOG.md) links the preserved earlier releases. The historical version DOIs identify those earlier archives, not version 0.4.0.
 
 See [architecture](docs/architecture.md) for the module layout and [contributing](contributing.md) for development guidance.
 

@@ -25,4 +25,7 @@ Existing `v0.1.0` and `v0.1.0.1` tags remain available. The historical
 [Zenodo record](https://doi.org/10.5281/zenodo.18994135) is retained as a reference
 to the earlier software; it is not presented as an archive of this 0.4.0 code.
 
+Version **0.4.0** is archived at [doi:10.5281/zenodo.22739031](https://doi.org/10.5281/zenodo.22739031).
+The [all-versions DOI](https://doi.org/10.5281/zenodo.18994134) follows the project’s archive history.
+
 Detailed cleanup and constants evidence is in [docs/development](docs/development).
