@@ -58,9 +58,6 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ![0.1 MeV — Photoelectric polar angle and shell selection](figures/0p1MeV/photoelectric_angle_shell.png)
 
-### Pair kinetic-energy sharing
-
-![0.1 MeV — Pair kinetic-energy sharing](figures/0p1MeV/pair_share.png)
 
 ### Interaction fractions
 
@@ -81,9 +78,6 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ![1 MeV — Photoelectric polar angle and shell selection](figures/1MeV/photoelectric_angle_shell.png)
 
-### Pair kinetic-energy sharing
-
-![1 MeV — Pair kinetic-energy sharing](figures/1MeV/pair_share.png)
 
 ### Interaction fractions
 
@@ -170,7 +164,7 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ## Data and reproduction
 
-The compact [campaign data](data/campaign.json) contains the numeric dose arrays, angular probabilities, shell counts, pair-sharing histogram counts, timing and original run identifiers used here. Each source file is identified by its name, energy, byte size and SHA-256 hash. The [poster figure manifest](data/poster_figures.json) records the exact original PNG/PDF hashes and attachment provenance. The [numeric verification record](data/poster_numeric_verification.json) compares the saved data with the original poster’s vector curves.
+The compact [campaign data](data/campaign.json) contains the numeric dose arrays, angular probabilities, shell counts, pair-sharing histogram counts, timing and original run identifiers used here. Each source file is identified by its name, energy, byte size and SHA-256 hash. The [poster figure manifest](data/poster_figures.json) records the exact original PNG/PDF hashes and attachment provenance. 
 
 From the repository root, with NumPy and Matplotlib installed:
 
@@ -180,4 +174,3 @@ python scripts/plot_results.py
 
 The plotter regenerates the figures from these compact numeric inputs and preserves the five original 5 MeV poster PNGs. See `python scripts/plot_results.py --help` for a separate output directory and for regenerating a comparison set for the poster energy. No checkpoint or simulation is needed for plotting. Large original pickle archives are not needed or loaded by this plotter.
 
-The saved source folder was `BeamWeaver_latest_0_2_9`, with energy subdirectories `0p1MeV`, `1MeV`, `2MeV`, `5MeV` and `10MeV`. Metadata JSON is available for the first four energies; the 10 MeV ASCII summary and dose arrays are available, but its metadata JSON and secondary records were not present. Secondary records were available only for MC1 and Beam Weaver at 0.1 MeV and for all three runs at 5 MeV.
