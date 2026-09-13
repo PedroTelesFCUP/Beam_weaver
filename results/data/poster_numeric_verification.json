@@ -1,0 +1,47 @@
+{
+  "description": "Numeric curves independently compared against archived original vector PDFs. A single common affine mapping from the committed plotted values to PDF y coordinates is fitted across all displayed methods. Tiny residuals verify the relative point values and normalization shared by the original curves and regenerated data.",
+  "checks": [
+    {
+      "figure": "pdd",
+      "series": [
+        "MC-1",
+        "MC-2",
+        "Beam Weaver"
+      ],
+      "points_compared": 300,
+      "maximum_residual_pdf_points": 1.887953618506799e-05,
+      "passes": true
+    },
+    {
+      "figure": "compton_angle",
+      "series": [
+        "MC-1",
+        "Beam Weaver"
+      ],
+      "points_compared": 36,
+      "maximum_residual_pdf_points": 1.363426273570667e-05,
+      "passes": true
+    },
+    {
+      "figure": "photoelectric_angle_shell",
+      "series": [
+        "MC-1",
+        "Beam Weaver"
+      ],
+      "points_compared": 36,
+      "maximum_residual_pdf_points": 2.01214604658162e-05,
+      "passes": true
+    },
+    {
+      "figure": "pair_share",
+      "series": [
+        "MC-1",
+        "MC-2",
+        "Beam Weaver"
+      ],
+      "points_compared": 90,
+      "maximum_residual_pdf_points": 2.3407864659930055e-05,
+      "passes": true
+    }
+  ]
+}

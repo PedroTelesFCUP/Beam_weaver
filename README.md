@@ -1,10 +1,24 @@
 # Beam Weaver
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18994134.svg)](https://doi.org/10.5281/zenodo.18994134)
+
 **Learned stochastic kernels for Monte Carlo photon transport.**
 
-Beam Weaver learns the probability distributions governing individual photon collisions from reference Monte Carlo samples. It then samples those learned distributions during transport, generating photon histories and charged-particle secondaries in water. The reference Monte Carlo engine, **Beam Spinner**, supplies the training examples and the conventional transport used for comparison.
+## Introduction
+
+Beam Weaver began as a proof-of-concept neural network that could be taught how to simulate photon/electron transport. Initially, the developed architecture involved  a Soft Actor–Critic agent, but training revealed that the previously supervised physics head used to kickstart the agent already accurately reproduced the photon transport, generating complete recursive showers without the need for reinforcement updates.  This shifted the focus from a reward-driven reinforcement learning agent to a direct framework, learning the local stochastic transition kernels directly from the Monte Carlo sampling. The mathematical framework also favoured this approach[1]. After the teaching process, Beam Weaver’s photon-electron showers are generated recursively just like Monte Carlo, strictly from values inferred by the  neural network heads, while imposing deterministic physics conservation laws. Beam Weaver was trained using Beam Spinner, a self-developed Python Monte Carlo code for photon and electron transport in liquid water (1 keV–10 MeV), largely inspired by the PENELOPE code [2]. Beam Spinner can sample photon mean free path, Rayleigh, Compton, photoelectric and pair events, using EPDL cross-sections and tabular coherent and incoherent scattering functions [3]; and simulate electron condensed history transport using EPDL stopping power tables. 
+
+After training, In its current form, Beam Weaver can successfully transport photons in a liquid water phantom with energies ranging from 1 keV to 10 MeV. Practically all stochastic quantities are inferred (interaction choice, photon shells in the case of photoelectric events, scattering polar and azimuth photon and electron angles, shared kinetic energy in pair production), totalling 13 inferred quantities, each with its own head, while exponential mean free path sampling and electron transport still use Beam Spinner’s classical Monte Carlo approach.
 
 The workflow is **generate data → train → simulate and compare**. The current implementation is version **0.4.0**.
+
+## Results
+
+The [ECMP results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** campaign: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. Each energy has the same five figure categories as the corrected poster: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
+
+![5 MeV depth-dose comparison from the corrected ECMP poster](results/figures/5MeV/pdd.png)
+
+The five original 5 MeV poster plots are reused unchanged. Other energies use the same plotting conventions; panels whose secondary records are unavailable are labelled explicitly. The gallery includes numerical data, provenance and instructions for regenerating plots. These are the **saved poster-campaign results**, not a new simulation of this release; available run metadata retain their original `0.2.9e` version and checkpoint labels.
 
 ## Method
 
@@ -130,10 +144,20 @@ Run regression checks with `python -m unittest discover -s tests -v`. Neural che
 
 ## Citation, history and license
 
-Citation metadata for the current code is in [CITATION.cff](CITATION.cff). Record the version and commit used for reproducible results. The [changelog](CHANGELOG.md) links the preserved earlier releases and distinguishes their Zenodo record from the current implementation.
+The project’s persistent, all-versions DOI is **[10.5281/zenodo.18994134](https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used when available, and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). The [changelog](CHANGELOG.md) links the preserved earlier releases. The historical version DOIs identify those earlier archives, not version 0.4.0.
 
 See [architecture](docs/architecture.md) for the module layout and [contributing](contributing.md) for development guidance.
 
 Pedro Teles — Department of Physics and Astronomy, Faculty of Sciences, University of Porto, Portugal.
 
 The project code is licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE) for notices and [LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md) for the scope of third-party licensing. External data and dependencies retain their respective terms.
+
+## References
+
+[1] J. S. Bridle, “Probabilistic Interpretation of Feedforward Classification Network Outputs,” *Neurocomputing* (1990). [doi:10.1007/978-3-642-76153-9_28](https://doi.org/10.1007/978-3-642-76153-9_28).
+
+[2] F. Salvat, *PENELOPE-2018: A Code System for Monte Carlo Simulation of Electron and Photon Transport*, OECD/NEA (2019). [doi:10.1787/32da5043-en](https://doi.org/10.1787/32da5043-en).
+
+[3] D. E. Cullen, J. H. Hubbell and L. Kissel, *EPDL97: The Evaluated Photon Data Library, ’97 Version* (1997). [doi:10.2172/295438](https://doi.org/10.2172/295438). J. H. Hubbell et al., “Atomic form factors, incoherent scattering functions, and photon scattering cross sections,” *Journal of Physical and Chemical Reference Data* **4**, 471–538 (1975). [doi:10.1063/1.555523](https://doi.org/10.1063/1.555523).
+
+Beam Spinner’s transport and sampling scheme draws substantially on the published PENELOPE algorithms; the author gratefully acknowledges Francesc Salvat, José M. Fernández-Varea, Josep Sempau and the wider PENELOPE development team.

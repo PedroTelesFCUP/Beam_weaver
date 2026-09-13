@@ -18,11 +18,11 @@ abstract: >
   sampling and approximate electron/positron transport use explicit physics.
 references:
   - type: software
-    title: "Beam Weaver: earlier SAC release"
+    title: "Beam Weaver"
     authors:
       - family-names: Teles
         given-names: Pedro
       - family-names: Melo
         given-names: João
-    version: 0.1.0
-    doi: 10.5281/zenodo.18994135
+    version: 0.1.0.1
+    doi: 10.5281/zenodo.19246395

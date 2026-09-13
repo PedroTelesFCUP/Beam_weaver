@@ -1,0 +1,68 @@
+{
+  "description": "The five 5 MeV PNG figures are reused byte-for-byte from the corrected poster and the archived original figure package. Associated vector PDFs are retained from that same package. The default plotter preserves these originals; --regenerate-poster can redraw from the committed campaign numbers to a separate output directory.",
+  "archive_filename": "BeamWeaver_5MeV_results_figures.zip",
+  "archive_sha256": "80612e5790036184259db27409dec74c4388848745fe7cc5d8c70a5b55efa25f",
+  "poster_filename": "Teles_ECMP_2026_Beamweaver_corrected.pptx",
+  "assets": [
+    {
+      "repository_path": "results/figures/5MeV/pdd.png",
+      "archive_member": "BeamWeaver_5MeV_results_figures/png/01_peak_normalized_pdd_5MeV.png",
+      "sha256": "348cdac62f2ed9b5b1f858fb49e2e83a23a0d9fbf3b6f066048c689dc80d93c8",
+      "poster_embedded_media": "image5.png",
+      "exact_byte_match_to_poster": true
+    },
+    {
+      "repository_path": "results/figures/5MeV/pdd.pdf",
+      "archive_member": "BeamWeaver_5MeV_results_figures/pdf/01_peak_normalized_pdd_5MeV.pdf",
+      "sha256": "9d287af3aa09815668f6c11bb61b2251ecf3701ebeb2286af9bf7ae435530e9f"
+    },
+    {
+      "repository_path": "results/figures/5MeV/compton_angle.png",
+      "archive_member": "BeamWeaver_5MeV_results_figures/png/03_compton_angle_5MeV.png",
+      "sha256": "e41072c3635386262e9b3d6abf307cc514007fa874950e0fbbe2ae77469e8574",
+      "poster_embedded_media": "image6.png",
+      "exact_byte_match_to_poster": true
+    },
+    {
+      "repository_path": "results/figures/5MeV/compton_angle.pdf",
+      "archive_member": "BeamWeaver_5MeV_results_figures/pdf/03_compton_angle_5MeV.pdf",
+      "sha256": "e38ac260c028961001fe159722e7e6a92e20a5eb3e5072684bc7d978f0617927"
+    },
+    {
+      "repository_path": "results/figures/5MeV/photoelectric_angle_shell.png",
+      "archive_member": "BeamWeaver_5MeV_results_figures/png/04_photoelectric_angle_and_shell_5MeV.png",
+      "sha256": "4ee0a32218595c2855cdd2f3f5537fac1f97e0af0610d27ee57753d40d4bba78",
+      "poster_embedded_media": "image7.png",
+      "exact_byte_match_to_poster": true
+    },
+    {
+      "repository_path": "results/figures/5MeV/photoelectric_angle_shell.pdf",
+      "archive_member": "BeamWeaver_5MeV_results_figures/pdf/04_photoelectric_angle_and_shell_5MeV.pdf",
+      "sha256": "333ed812ff8f5cee42c64c38a3e48af7b41c95a24b543aac1ff4bbb2ea23629d"
+    },
+    {
+      "repository_path": "results/figures/5MeV/pair_share.png",
+      "archive_member": "BeamWeaver_5MeV_results_figures/png/05_pair_production_kinetic_energy_sharing_5MeV.png",
+      "sha256": "58fb76bab865d5618d05375866e7395bfd56ca630711339a0cfd830cb4a2387b",
+      "poster_embedded_media": "image8.png",
+      "exact_byte_match_to_poster": true
+    },
+    {
+      "repository_path": "results/figures/5MeV/pair_share.pdf",
+      "archive_member": "BeamWeaver_5MeV_results_figures/pdf/05_pair_production_kinetic_energy_sharing_5MeV.pdf",
+      "sha256": "f9f5cd929b80d5e31ff8b9dac29217413d2ea9c62684bf93033fdc01c2a88ca7"
+    },
+    {
+      "repository_path": "results/figures/5MeV/interaction_fractions.png",
+      "archive_member": "BeamWeaver_5MeV_results_figures/png/06_interaction_fractions_5MeV.png",
+      "sha256": "151232b4b249c03c8a50385c00a0a841179afa8dd368d9e1c5483ec6c6296876",
+      "poster_embedded_media": "image9.png",
+      "exact_byte_match_to_poster": true
+    },
+    {
+      "repository_path": "results/figures/5MeV/interaction_fractions.pdf",
+      "archive_member": "BeamWeaver_5MeV_results_figures/pdf/06_interaction_fractions_5MeV.pdf",
+      "sha256": "7ee2469322b60167d944bd0fbb2866d41ba17cf2aa4be9a62cea00f44c2d9f86"
+    }
+  ]
+}
