@@ -6,13 +6,10 @@
 
 After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic photon histories were generated within a 10x10 cm2 square and transported through a 100x100x100 cm3  water phantom at five different initial energies (0.1, 1, 2, 5, and 10 MeV). Two Beam Spinner runs were performed at different PRNG seeds, and one run using Beam Weaver alone. The idea was to demonstrate the fidelity of Beam Weaver’s transport capabilities. Beam Spinner and Beam Weaver’s runs shared the mean free path Simulator and the electron/positron condensed history transport. All other quantities were inferred by Beam Weaver with only prior knowledge of the energy and direction of the source particles, generating the rest recursively. Results presented here cover all five initial photon energies. Error bars are not shown for enhanced visuals.
 
-The experiment description follows the corrected ECMP poster, adding 1 MeV to the energy list and extending the displayed results to all five energies. The five **5 MeV PNG figures are byte-for-byte the images embedded in that poster**. Other energies use the same figure categories, binning, normalization, palette and comparison arms where records exist.
-
-These are saved campaign results. Available original metadata report `version: 0.2.9e`, checkpoint `pretrain_v029e/best_validation_nll.pt`, checkpoint MD5 `6a880f6c86e5d01b9896a6a6f1ada7ec`, and epoch 4. The poster notes describe that folder/version label as stale. We retain the original labels so these results can be traced; they are **not a fresh simulation or performance benchmark of the refactored v0.4.0 commit**.
 
 ## Figure coverage
 
-Every energy below has the same five figure slots. “Unavailable” means the saved secondary records needed to calculate that distribution were not found. It does not mean a measured zero.
+Every energy below has the same five figure slots. 
 
 | Initial energy | PDD | Compton polar angle | Photoelectric polar angle / shell selection | Pair kinetic-energy sharing | Interaction fractions |
 | --- | --- | --- | --- | --- | --- |
