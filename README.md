@@ -16,6 +16,10 @@ Thirteen heads with disjoint parameters represent interaction selection, photoel
 
 Training minimizes cross-entropy against reference samples or their empirical category distributions. The heads use photon energy and, where required, the selected shell or sampled electron/positron energy fraction. Training proceeds head by head, with validation-based stopping and restoration of the best weights when overfitting. The learned energy domain is **0.001–10 MeV**.
 
+## Experiment
+
+After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic photon histories were generated within a 10x10 cm2 square and transported through a 100x100x100 cm3  water phantom at five different initial energies (0.1, 1, 2, 5, and 10 MeV). Two Beam Spinner runs were performed at different PRNG seeds, and one run using Beam Weaver alone. The idea was to demonstrate the fidelity of Beam Weaver’s transport capabilities. Beam Spinner and Beam Weaver’s runs shared the mean free path Simulator and the electron/positron condensed history transport. All other quantities were inferred by Beam Weaver with only prior knowledge of the energy and direction of the source particles, generating the rest recursively. Results presented here cover all five initial photon energies. Error bars are not shown for enhanced visuals.
+
 ## Results
 
 The [ECMP results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** results: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. For each energy, five figures are presented: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
