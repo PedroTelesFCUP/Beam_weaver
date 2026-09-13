@@ -1,0 +1,222 @@
+[
+  {
+    "patch": "00-repair-lepton-call-sites.patch",
+    "patch_sha256": "f27f549387180b014b64b93780f784026d6c1110fcb5c9f7e60d3b375a35fc79",
+    "files": [
+      {
+        "path": "beamweaver/transport.py",
+        "before_sha256": "b7e100e6da40413963a56be511b84c968b71af24287c6a82faa0179ff570915d",
+        "after_sha256": "9af6f56eaf7d3fb6d5deb07ad28dec90b061a3f917fc5ace7d814beeb0fcd8a4"
+      }
+    ]
+  },
+  {
+    "patch": "01-consolidate-constants.patch",
+    "patch_sha256": "3d6ebf0a65500cca5d46b16f0ffc0a9358eedf3081334df2cf9b9e95147b155f",
+    "files": [
+      {
+        "path": "beamweaver/audit.py",
+        "before_sha256": "d520dfd099b052460c4e27b3953ca77aa7f421e24984db3a459e751221de0bcd",
+        "after_sha256": "2221c57d3cbd6a85ebdc9afc7230a5d82849ca68325fbe33cd2764de89276b59"
+      },
+      {
+        "path": "beamweaver/cli.py",
+        "before_sha256": "9be107d2768fc17e4bf97cf80f0988aabf4d65b06a97f18eba983acd3c537095",
+        "after_sha256": "bee1b9d23b9f0b7c60fc062c7e35fe71f37757a8f6ab299ae8fed4546104031e"
+      },
+      {
+        "path": "beamweaver/constants.py",
+        "before_sha256": "aca638e9c0c210d0b6c19f61656f34f20f679b16a5d8fc14b4717baa8f3323b9",
+        "after_sha256": "df4e0de310499171ebfab2d81bf21276b8f29622b0ba2053f64c4fdac8092ce9"
+      },
+      {
+        "path": "beamweaver/coordinates.py",
+        "before_sha256": "4bb2d7bfc947b1620498327e3374552662e1279052e9b30b9bc6d2f59b3e1474",
+        "after_sha256": "488cc596ef1a17802defa92b56c570a50dd2c3c3c77e37f39fa12c6fc168c130"
+      },
+      {
+        "path": "beamweaver/dataset.py",
+        "before_sha256": "2b283d492fa5d8b1f87e36f4f0948233073b23192d13fbcdd9b97f48e15c7d11",
+        "after_sha256": "1d564f193049a5ec43f4145c39f31b73af4a195172718e0caefe45836ebed8b8"
+      },
+      {
+        "path": "beamweaver/evaluation.py",
+        "before_sha256": "19738186b5530f39c898fc3c70b9328ddcd6f5ecf283c935243a91ff372482b6",
+        "after_sha256": "0fd651c1ec980cd5f84a3a88c381a5868c963a81e6933e773b3c955aca774256"
+      },
+      {
+        "path": "beamweaver/geometry.py",
+        "before_sha256": "b00aa5a3953d95c4c2d5ad961bfa69507dbe65788b127023108c6107261256fe",
+        "after_sha256": "e72e77aafcc0d597389224b4de46c721716e788498647c72b3c01054113ec4ff"
+      },
+      {
+        "path": "beamweaver/materials.py",
+        "before_sha256": "23afa03c15a2f7ca48961eb395afc949e2d15d2dfc52e0db8c9b942c0ca0ae9f",
+        "after_sha256": "615a2263c2422b0323855fef6fef1b88018baa9a9f793fb407441b2aee3e2384"
+      },
+      {
+        "path": "beamweaver/physics.py",
+        "before_sha256": "1481e93e939af9b46efd55eb7467c99639dabf3fc6049a67e6b32e12d8c73023",
+        "after_sha256": "7ef22ae08f6c6bb45389bd5d5445fdec64821c757ed420075166b964163b6b98"
+      },
+      {
+        "path": "beamweaver/policy.py",
+        "before_sha256": "909d4fdc5e5d5efa12d1500a0b7056f8a48191aeef2d1b93c26ba6b786694b71",
+        "after_sha256": "551bec1d21fffa7ae180b2027b1c92b9dc73bfec3c407efe648c77b56906c516"
+      },
+      {
+        "path": "beamweaver/training.py",
+        "before_sha256": "bde63a4d97dacb4ef05d336ff63267d1c9c8788d9f444a58aa03b2177c95607b",
+        "after_sha256": "c1169881ea13a5e1538ed8d47782d3f915049ee45837e311bb2ae1a57cdb9f42"
+      },
+      {
+        "path": "beamweaver/transport.py",
+        "before_sha256": "9af6f56eaf7d3fb6d5deb07ad28dec90b061a3f917fc5ace7d814beeb0fcd8a4",
+        "after_sha256": "08f32d438aab7131c8eb299c346dc9f992655c6d864552878a2c8908dd2aa273"
+      },
+      {
+        "path": "beamweaver/validation.py",
+        "before_sha256": "972dcaa529b11a274343e243460afc12171c54490713045614e6e2fb44aa6ab5",
+        "after_sha256": "53037a0a31f4a06e50678010c600e807b5e7ae152408a05d710b5dc90472f07f"
+      },
+      {
+        "path": "pyproject.toml",
+        "before_sha256": "085e2fc57a615899937ebb488e2933c3ddf21c9bf0b3f4888ac33641d329b4ba",
+        "after_sha256": "7218ef26cdf0c738ff65993a089f115ec34477e64e5b03bee8ec0ea421b971e7"
+      },
+      {
+        "path": "tests/reference_fixtures.py",
+        "before_sha256": "8bdd763ebfe35f5309ccd0ade5252bff6fb86347244d221eb32e0c86517afad9",
+        "after_sha256": "a23d6753b275a4b2486a3ead9f88a4be889c2ea3eadbad49b3c960c971abc9f8"
+      },
+      {
+        "path": "tests/test_constants_consolidation.py",
+        "before_sha256": null,
+        "after_sha256": "98d10678464db038500d9f516c5338bbfe17f6e419a6dbbde344b253905373f1"
+      }
+    ]
+  },
+  {
+    "patch": "02-harmonize-rest-energy.patch",
+    "patch_sha256": "eb4d797330bd5937257d4a46b99db14bf100273c72716bd576f1f9307c26d82a",
+    "files": [
+      {
+        "path": "beamweaver/audit.py",
+        "before_sha256": "2221c57d3cbd6a85ebdc9afc7230a5d82849ca68325fbe33cd2764de89276b59",
+        "after_sha256": "3678f9c239dff267e0c76ba20471e630f0b97392d92ef1637a0bb17d1dc413ce"
+      },
+      {
+        "path": "beamweaver/constants.py",
+        "before_sha256": "df4e0de310499171ebfab2d81bf21276b8f29622b0ba2053f64c4fdac8092ce9",
+        "after_sha256": "cd633e5cb25acc52180a799688fdd1e7d609b54625d14d607e2ce7ed2ff17d6f"
+      },
+      {
+        "path": "beamweaver/dataset.py",
+        "before_sha256": "1d564f193049a5ec43f4145c39f31b73af4a195172718e0caefe45836ebed8b8",
+        "after_sha256": "7fd8212a0502a850b4a9a6a54fed55fb16623cc38a0a9bf2c2cad7924ca1b7d3"
+      },
+      {
+        "path": "beamweaver/evaluation.py",
+        "before_sha256": "0fd651c1ec980cd5f84a3a88c381a5868c963a81e6933e773b3c955aca774256",
+        "after_sha256": "f3f015282187b61aa01acf1a0b2edd5a7c335d75f259ca87f399e17c8884b72c"
+      },
+      {
+        "path": "beamweaver/physics.py",
+        "before_sha256": "7ef22ae08f6c6bb45389bd5d5445fdec64821c757ed420075166b964163b6b98",
+        "after_sha256": "d5a056d455b92a589ab7904d3a0b658b8568e96bf265b3193eecc6053eb5ccfa"
+      },
+      {
+        "path": "beamweaver/policy.py",
+        "before_sha256": "551bec1d21fffa7ae180b2027b1c92b9dc73bfec3c407efe648c77b56906c516",
+        "after_sha256": "689b7438724284b9f7cf78b3a04e3dfa1487e9ab2206dff2093e01d6a6995558"
+      },
+      {
+        "path": "beamweaver/training.py",
+        "before_sha256": "c1169881ea13a5e1538ed8d47782d3f915049ee45837e311bb2ae1a57cdb9f42",
+        "after_sha256": "ec90867bea007d09804fa1579cb09ac293c25763526d8aacacffc44e7c315637"
+      },
+      {
+        "path": "beamweaver/transport.py",
+        "before_sha256": "08f32d438aab7131c8eb299c346dc9f992655c6d864552878a2c8908dd2aa273",
+        "after_sha256": "50e3e78c1ce87a98263558ba34088339fba1db984f0544c608d8ba740663cb04"
+      },
+      {
+        "path": "beamweaver/validation.py",
+        "before_sha256": "53037a0a31f4a06e50678010c600e807b5e7ae152408a05d710b5dc90472f07f",
+        "after_sha256": "ff3721547142f71a228b08ed72e3c0bbe4a3130a22aa59f1c208cfd498e8c7c1"
+      },
+      {
+        "path": "tests/reference_fixtures.py",
+        "before_sha256": "a23d6753b275a4b2486a3ead9f88a4be889c2ea3eadbad49b3c960c971abc9f8",
+        "after_sha256": "835f279d74775774b0b03e662d6664752abf34878d44cac05ec6bdf59505a25a"
+      },
+      {
+        "path": "tests/test_neural.py",
+        "before_sha256": "d357ee697f6833486285e79a783aef70966484496737af28128fa4efbf076efb",
+        "after_sha256": "c8826db2b11a864724e160c4d07d102aba42e2b687584d0926dff577dc18b53d"
+      },
+      {
+        "path": "tests/test_reference_regression.py",
+        "before_sha256": "18be0fd9cddec9ab92356a9b8b441f1f167d48eda862d3df936b15214064488e",
+        "after_sha256": "3ccb0be77560897d62aa8b6ac90b524f86f30d3e76db72d2ee429fbb9e929456"
+      },
+      {
+        "path": "tests/test_rest_energy_policy.py",
+        "before_sha256": null,
+        "after_sha256": "af36dc15892c5b304384cd2847ce9b5d1aa25eede548f97738484efb2960d4a3"
+      },
+      {
+        "path": "tests/test_rest_energy_provenance.py",
+        "before_sha256": null,
+        "after_sha256": "3182c13784ac70517e307a1856d57943a2dd7b69b66567f8f46896c273254172"
+      },
+      {
+        "path": "tests/test_rest_energy_transport.py",
+        "before_sha256": null,
+        "after_sha256": "b9ab262a2ff1c5f8a6efd4ed07c5a1a5cb18600400de0b18cd8c62c7a2aa9774"
+      }
+    ]
+  },
+  {
+    "patch": "03-clarify-sampling-counts.patch",
+    "patch_sha256": "7f2e342b8761129b890ad3b24d074be6fd5b139c85b2923d46c98d113027716b",
+    "files": [
+      {
+        "path": "beamweaver/cli.py",
+        "before_sha256": "bee1b9d23b9f0b7c60fc062c7e35fe71f37757a8f6ab299ae8fed4546104031e",
+        "after_sha256": "1979a53aac82d7e64e3b329a292e78d95c1dfc82f72848e78e722ae42d0aef93"
+      },
+      {
+        "path": "beamweaver/dataset.py",
+        "before_sha256": "7fd8212a0502a850b4a9a6a54fed55fb16623cc38a0a9bf2c2cad7924ca1b7d3",
+        "after_sha256": "dee9bc8769ca5855ce4bea50a14c140600dd197d1148c5c5210a36aea0b87ee7"
+      },
+      {
+        "path": "README.md",
+        "before_sha256": "c777a4f356185ed29fae4a380cabcf991e7fb9a763d88aab7dfcf114396241c7",
+        "after_sha256": "a4743fbaabde3dad847ba15df3a24e14a58fd3ee06f6d0646de35f41a627d956"
+      }
+    ]
+  },
+  {
+    "patch": "04-clarify-training-heads.patch",
+    "patch_sha256": "32954f8dad1be188e670d2295360e11f458b0a070ec9f1a7a1723a71308d9e21",
+    "files": [
+      {
+        "path": "beamweaver/cli.py",
+        "before_sha256": "1979a53aac82d7e64e3b329a292e78d95c1dfc82f72848e78e722ae42d0aef93",
+        "after_sha256": "ecbcf21ff699f31d822c80150b1030b9a412d219ad2dc10c3fadbde97b3fe3e4"
+      },
+      {
+        "path": "beamweaver/training.py",
+        "before_sha256": "ec90867bea007d09804fa1579cb09ac293c25763526d8aacacffc44e7c315637",
+        "after_sha256": "63d00b85fafec03f3dad58bea7f0fd27e7916aade77ec1f4b1f798a26f23d16c"
+      },
+      {
+        "path": "README.md",
+        "before_sha256": "a4743fbaabde3dad847ba15df3a24e14a58fd3ee06f6d0646de35f41a627d956",
+        "after_sha256": "8433d41111f3f1dadb3c88fcba941e6f54c38dacbd12da7b56a59c05afa07f0d"
+      }
+    ]
+  }
+]

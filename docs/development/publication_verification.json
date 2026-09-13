@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-13",
+  "scope": "Publication refresh of the existing repository",
+  "previous_main": "67a5af859c95e5f09cafe460b53d806a181dcc1c",
+  "preservation_branch": "archive/sac-before-0.4.0",
+  "package_version": "0.4.0",
+  "runtime_comparison": "All Python package files match the approved modular package; cli.py differs only in the corrected GitHub URL.",
+  "retained_files": "All six root water CSVs and LICENSE match the previous main commit byte-for-byte.",
+  "local_checks": {
+    "unit_tests": 29,
+    "passed": 29,
+    "skipped": 0,
+    "torch": "2.14.0+cpu",
+    "original_source_comparison": true,
+    "wheel_build": "passed",
+    "entrypoint_help": "passed",
+    "public_documentation_links": "passed",
+    "citation_environment_workflow_yaml": "parsed",
+    "table_loader_compatibility": "passed"
+  },
+  "limits": [
+    "No full training or new physics validation was performed for this repository refresh.",
+    "Local checks do not report GitHub Actions results.",
+    "Historical development records describe their dated verification environments."
+  ]
+}

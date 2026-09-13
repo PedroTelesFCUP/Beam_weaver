@@ -1,0 +1,96 @@
+{
+  "errors": [],
+  "module_lines": {
+    "policy": 398,
+    "__init__": 1,
+    "coordinates": 83,
+    "evaluation": 186,
+    "validation": 485,
+    "constants": 160,
+    "cli": 472,
+    "physics": 669,
+    "events": 14,
+    "transport": 837,
+    "audit": 292,
+    "__main__": 4,
+    "training": 307,
+    "dataset": 381,
+    "reporting": 55,
+    "materials": 230,
+    "geometry": 119
+  },
+  "package_lines": 4693,
+  "dependencies": {
+    "policy": [
+      "constants",
+      "coordinates",
+      "events"
+    ],
+    "__init__": [],
+    "coordinates": [
+      "constants"
+    ],
+    "evaluation": [
+      "audit",
+      "constants",
+      "dataset",
+      "transport"
+    ],
+    "validation": [
+      "constants",
+      "coordinates",
+      "dataset",
+      "physics"
+    ],
+    "constants": [],
+    "cli": [
+      "constants",
+      "coordinates",
+      "dataset",
+      "evaluation",
+      "geometry",
+      "materials",
+      "policy",
+      "reporting",
+      "training",
+      "validation"
+    ],
+    "physics": [
+      "constants",
+      "materials"
+    ],
+    "events": [],
+    "transport": [
+      "constants",
+      "geometry",
+      "materials",
+      "physics"
+    ],
+    "audit": [
+      "constants",
+      "materials",
+      "physics"
+    ],
+    "__main__": [
+      "cli"
+    ],
+    "training": [
+      "constants",
+      "coordinates",
+      "dataset",
+      "policy"
+    ],
+    "dataset": [
+      "constants",
+      "coordinates",
+      "physics"
+    ],
+    "reporting": [],
+    "materials": [
+      "constants"
+    ],
+    "geometry": [
+      "constants"
+    ]
+  }
+}

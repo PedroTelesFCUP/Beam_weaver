@@ -1,0 +1,77 @@
+{
+  "date": "2026-09-11",
+  "source_sha256": "e9ac773e89c3ffca8c1de61408c6e53df906abae72df0f1b3781ed6f39408647",
+  "python": "3.12.14",
+  "libraries": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "matplotlib": "3.10.8"
+  },
+  "package_unit_tests": {
+    "run": 10,
+    "passed": 6,
+    "skipped": 4,
+    "skip_reason": "PyTorch is not installed"
+  },
+  "package_compile": "passed",
+  "static_package_references": "passed",
+  "reference_sampler_scenarios": 20,
+  "lepton_scenarios": 12,
+  "same_environment_reference_equivalence": "exact outputs and subsequent RNG state",
+  "reference_shower_comparison": {
+    "fixture_kind": "artificial tables, not physical validation",
+    "cases": [
+      {
+        "energy_MeV": 0.05,
+        "histories": 6,
+        "interactions": 23,
+        "banked_photons": 10,
+        "pairs": 0,
+        "max_ledger_error_MeV": 6.938893903907228e-18,
+        "dose_sum_MeV": 0.2985863983631134,
+        "exact_output_and_rng_match": true,
+        "result_sha256": "ef0bebf9a8ae23e4ccdfc3e9ea186d149eb817b48fdac1b023523432c2b3bb5e"
+      },
+      {
+        "energy_MeV": 2.0,
+        "histories": 6,
+        "interactions": 258,
+        "banked_photons": 182,
+        "pairs": 4,
+        "max_ledger_error_MeV": 4.440892098500626e-16,
+        "dose_sum_MeV": 10.925430297851562,
+        "exact_output_and_rng_match": true,
+        "result_sha256": "703c8240ef137992cdf018345423ec6ed1f6572da382cb36aa6ba91ea33c6325"
+      },
+      {
+        "energy_MeV": 5.0,
+        "histories": 6,
+        "interactions": 426,
+        "banked_photons": 256,
+        "pairs": 4,
+        "max_ledger_error_MeV": 1.4210854715202004e-14,
+        "dose_sum_MeV": 28.66153907775879,
+        "exact_output_and_rng_match": true,
+        "result_sha256": "a53ab438377aafab2b90fedb6aa7b3bc5d335766552312847c7a9212a360f038"
+      }
+    ],
+    "passed": true
+  },
+  "angular_distribution_arrays_exact": 49,
+  "energy_encoding_cases_per_mode": 20006,
+  "cli_dataset_generation": {
+    "artificial_condition_groups": 217,
+    "events_per_condition": 64,
+    "grid_stride": 8,
+    "execution": "passed",
+    "representation_statistics": "insufficient, checks skipped"
+  },
+  "not_executed": [
+    "PyTorch model execution",
+    "CUDA",
+    "production table validation",
+    "real model checkpoint regression",
+    "external Monte Carlo benchmark"
+  ],
+  "fixtures": "artificial, not water-validation evidence"
+}

@@ -1,0 +1,98 @@
+--- a/beamweaver/cli.py
++++ b/beamweaver/cli.py
+@@ -121,14 +121,14 @@
+     generate.add_argument("--pair-events", type=_positive_int, metavar="N",
+                           help=f"pair events per photon energy above threshold (default: {BW4_M_DEFAULT['pair']}); group counts override --events")
+ 
+-    train = commands.add_parser("train", help="train all heads or one selected factor")
++    train = commands.add_parser("train", help="train all heads or one selected head")
+     train.add_argument("dataset", help="schema-v4 .npz dataset")
+     device_options(train)
+     group = train.add_mutually_exclusive_group()
+     group.add_argument("--output", metavar="RUN_DIR", help="new training output directory")
+     group.add_argument("--resume", metavar="RUN_DIR",
+-                       help="explicitly resume factor checkpoints from this run directory")
+-    train.add_argument("--factor", help="train/retrain one factor (e.g. process, comp_u, pair_frac)")
++                       help="explicitly resume head checkpoints from this run directory")
++    train.add_argument("--factor", help="train/retrain one selected head (e.g. process, comp_u, pair_frac)")
+     train.add_argument("--epochs", type=_positive_int,
+                        help="override each head's existing epoch limit")
+     train.add_argument("--batch", type=_positive_int, default=DEFAULT_TRAIN_BATCH_SIZE,
+@@ -259,16 +259,16 @@
+         dataset = _required_file(args.dataset, "Dataset")
+         from .constants import BW4_FACTOR_HEADS
+         if args.factor and args.factor not in BW4_FACTOR_HEADS:
+-            raise ValueError(f"Unknown factor {args.factor!r}; choose from: "
++            raise ValueError(f"Unknown head {args.factor!r}; choose from: "
+                              f"{', '.join(BW4_FACTOR_HEADS)}")
+         if args.resume:
+             run_dir = Path(args.resume).expanduser().resolve()
+             if not run_dir.is_dir():
+                 raise FileNotFoundError(f"Training run directory not found: {run_dir}")
+             if not any(run_dir.glob("v040_head_*.pt")):
+-                raise FileNotFoundError(f"No factor checkpoints found in {run_dir}")
++                raise FileNotFoundError(f"No head checkpoints found in {run_dir}")
+             if args.factor:
+-                checkpoint = _required_file(run_dir / "v040_policy.pt", "Policy for factor retraining")
++                checkpoint = _required_file(run_dir / "v040_policy.pt", "Policy for head retraining")
+         else:
+             run_dir = _new_run_dir(args.output, command)
+         from .training import create_policy, train_policy, train_factor
+@@ -384,7 +384,7 @@
+     while True:
+         print(f"\nBeam Weaver {BW_VERSION}\n"
+               "  1  Generate training/validation/test data\n"
+-              "  2  Train policy (all heads or one factor)\n"
++              "  2  Train all heads or one selected head\n"
+               "  3  Run an audited shower\n"
+               "  4  Compare MC1, MC2 and BeamWeaver\n"
+               "  5  Validate factors or reference samplers\n"
+@@ -402,7 +402,7 @@
+             if command == "train":
+                 dataset = _ask("Dataset", dataset)
+                 argv.append(dataset)
+-                factor = _ask("One factor (blank = all heads)")
++                factor = _ask("Head to train (blank = all heads)")
+                 if factor:
+                     argv.extend(["--factor", factor])
+                 resume = _ask("Resume directory (blank = new training run)")
+--- a/beamweaver/training.py
++++ b/beamweaver/training.py
+@@ -165,7 +165,7 @@
+         outd = (head.logits.shape[0] if isinstance(head, UnconditionalCategoricalHead)
+                 else head.net[-1].out_features)
+         n_tr = tr[1].shape[0]
+-        print(f"  [v4:train] factor={factor} head={attr} "
++        print(f"  [v4:train] head={factor} module={attr} "
+               f"in={BW4_FACTOR_HEADS[factor][1]} out={outd} "
+               f"train_{'events' if per_event else 'conds'}={n_tr} "
+               f"val={va[1].shape[0]} opt=Adam lr={lr} epochs<={epochs}")
+@@ -226,7 +226,7 @@
+     for k, v in policy.state_dict().items():
+         if not k.startswith(f"{attr}."):
+             assert torch.equal(v, snap[k]), \
+-                f"factor isolation violated: {k} changed while training " \
++                f"head isolation violated: {k} changed while training " \
+                 f"{factor}"
+     policy.ready[factor] = True
+     if per_event:
+@@ -274,7 +274,7 @@
+     run_dir.mkdir(parents=True, exist_ok=True)
+     total = len(BW4_TRAIN_SEQUENCE)
+     for i, group in enumerate(BW4_TRAIN_SEQUENCE, 1):
+-        label = group[0] if len(group) == 1 else "pair directional factors"
++        label = group[0] if len(group) == 1 else "pair direction heads"
+         if resume:
+             for f in group:
+                 path = run_dir / f"v040_head_{f}.pt"
+--- a/README.md
++++ b/README.md
+@@ -88,7 +88,7 @@
+ 
+ Generation saves the training, validation and test samples and bin edges in a schema-v4 NPZ. Training reads that file; it does not regenerate it at each collision or training session. The current schema identifiers, coordinate metadata, head attribute names and random-seed derivation are retained because they specify the meaning of data and weights.
+ 
+-Training writes its factor checkpoints and complete `v040_policy.pt` into a selected run directory. Fresh training is the default. Resume is explicit and must use the matching dataset and run directory; the inherited checkpoint identity checks still need strengthening (see CLEANUP.md).
++Option 2, **Train all heads or one selected head**, asks which head to train; leaving the selection blank trains all heads. Training writes its head checkpoints and complete `v040_policy.pt` into a selected run directory. Fresh training is the default. Resume is explicit and must use the matching dataset and run directory; the inherited checkpoint identity checks still need strengthening (see CLEANUP.md).
+ 
+ ## Outputs and interpretation
+ 

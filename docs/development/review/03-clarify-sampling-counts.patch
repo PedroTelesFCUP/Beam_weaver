@@ -1,0 +1,102 @@
+--- a/beamweaver/cli.py
++++ b/beamweaver/cli.py
+@@ -112,14 +112,14 @@
+     generate.add_argument("--smoke", action="store_true",
+                           help="reduced grid and event counts; retains the data sanity check")
+     generate.add_argument("--events", type=_positive_int, metavar="N",
+-                          help="events per condition for every factor; default preserves factor-specific counts")
++                          help="events per photon energy for each sampling group; photoelectric events are counted separately for each shell; default preserves group-specific counts")
+ 
+     generate.add_argument("--categorical-events", type=_positive_int, metavar="N",
+-                          help=f"process/shell events per condition (default: {BW4_M_DEFAULT['process']})")
++                          help=f"events per photon energy for each of process selection and shell selection (default: {BW4_M_DEFAULT['process']})")
+     generate.add_argument("--continuous-events", type=_positive_int, metavar="N",
+-                          help=f"Rayleigh/Compton/photo events per condition (default: {BW4_M_DEFAULT['ray']})")
++                          help=f"events per photon energy for each of Rayleigh and Compton; photoelectric events per photon energy and shell (default: {BW4_M_DEFAULT['ray']})")
+     generate.add_argument("--pair-events", type=_positive_int, metavar="N",
+-                          help=f"pair events per condition (default: {BW4_M_DEFAULT['pair']}); group counts override --events")
++                          help=f"pair events per photon energy above threshold (default: {BW4_M_DEFAULT['pair']}); group counts override --events")
+ 
+     train = commands.add_parser("train", help="train all heads or one selected factor")
+     train.add_argument("dataset", help="schema-v4 .npz dataset")
+@@ -163,7 +163,9 @@
+     device_options(validate)
+     validate.add_argument("--energies", type=_energies, metavar="MEV,...")
+     validate.add_argument("--samples", type=_positive_int,
+-                          help=f"MC samples per condition (default: {DEFAULT_FACTOR_VALIDATION_SAMPLES} "
++                          help=f"MC samples per photon energy (photoelectric: per photon energy and shell); "
++                               f"factor validation uses two independent MC replicas with this count each "
++                               f"(default: {DEFAULT_FACTOR_VALIDATION_SAMPLES} "
+                                f"for factors, {DEFAULT_REFERENCE_VALIDATION_SAMPLES} for --reference)")
+     validate.add_argument("--no-figures", action="store_true")
+ 
+@@ -328,7 +330,7 @@
+                 if value is not None:
+                     counts.update({factor: value for factor in factors})
+             kwargs["M"] = counts
+-            print(f"  [generate] events per condition: {counts}")
++            print(f"  [generate] events per photon energy (photo: per photon energy and shell): {counts}")
+             generate_dataset(data, out=str(run_dir / "schema_v4_data.npz"), **kwargs)
+             write_generator_spec(str(run_dir / "schema_v4_generator_spec.json"))
+             return run_dir
+@@ -420,9 +422,9 @@
+                 if _ask("Reduced smoke dataset? y/N", "N").lower() == "y":
+                     argv.append("--smoke")
+                 else:
+-                    argv.extend(["--categorical-events", _ask("Process/shell events per condition", BW4_M_DEFAULT["process"]),
+-                                 "--continuous-events", _ask("Rayleigh/Compton/photo events per condition", BW4_M_DEFAULT["ray"]),
+-                                 "--pair-events", _ask("Pair events per condition", BW4_M_DEFAULT["pair"])])
++                    argv.extend(["--categorical-events", _ask("Events per photon energy for each of process selection and shell selection", BW4_M_DEFAULT["process"]),
++                                 "--continuous-events", _ask("Events per photon energy for each of Rayleigh/Compton; photoelectric per energy and shell", BW4_M_DEFAULT["ray"]),
++                                 "--pair-events", _ask("Pair events per photon energy above threshold", BW4_M_DEFAULT["pair"])])
+             elif command == "run":
+                 argv.extend(["--energy", _ask("Photon energy (MeV)", DEFAULT_RUN_ENERGY_MEV),
+                              "--histories", _ask("Histories", DEFAULT_RUN_HISTORIES)])
+@@ -431,7 +433,7 @@
+                                               ",".join(map(str, DEFAULT_COMPARISON_ENERGIES))),
+                              "--histories", _ask("Histories per arm", DEFAULT_COMPARISON_HISTORIES)])
+             elif command == "validate":
+-                argv.extend(["--samples", _ask("MC samples per condition",
++                argv.extend(["--samples", _ask("MC samples per photon energy (photoelectric: per energy and shell)",
+                                               DEFAULT_REFERENCE_VALIDATION_SAMPLES
+                                               if "--reference" in argv
+                                               else DEFAULT_FACTOR_VALIDATION_SAMPLES)])
+--- a/beamweaver/dataset.py
++++ b/beamweaver/dataset.py
+@@ -218,7 +218,7 @@
+         if verbose:
+             print(f"  [v4:data] role={role}: "
+                   f"{sum(len(v) for v in mani['groups'][role].values())} "
+-                  f"condition groups generated")
++                  f"sample groups generated (one photon energy, and one shell for photoelectric sampling)")
+     edges = derive_edges(arrays, grids["train"], thr, verbose=verbose)
+     edges, sanity = edge_sanity_check(arrays, edges, grids, thr,
+                                           verbose=verbose)
+@@ -315,7 +315,7 @@
+                       "pass": (w <= BW4_SANITY_FLOOR) if nc else None,
+                       "insufficient_statistics": nc == 0}
+         if nc == 0 and verbose:
+-            print(f"  [v4:sanity] {nm}: all {nsk} validation conditions "
++            print(f"  [v4:sanity] {nm}: all {nsk} validation sample groups "
+                   f"below 16 events/bin — check SKIPPED (noise-dominated); "
+                   f"rerun at canonical M for a meaningful verdict")
+         if report[nm]["pass"] is False:
+--- a/README.md
++++ b/README.md
+@@ -46,6 +46,16 @@
+ 
+ Use a new or empty output directory. `--smoke` reduces dataset statistics for execution checks. `--categorical-events`, `--continuous-events` and `--pair-events` override the three event-count groups. Reduced statistics may skip representation checks for sparsely occupied bins; a smoke run is not a validated production dataset.
+ 
++Generation counts apply separately at each photon energy in each dataset split:
++
++| Setting | What the count applies to |
++| --- | --- |
++| `--categorical-events` | Each of process selection and shell selection at each photon energy |
++| `--continuous-events` | Each of Rayleigh and Compton at each photon energy; photoelectric sampling at each photon energy and shell |
++| `--pair-events` | Pair production at each photon energy above threshold |
++
++For example, `--continuous-events 8192` generates 8,192 Rayleigh events, 8,192 Compton events and 8,192 photoelectric events for each of the five shells at every selected photon energy. These are separate sample counts, not a combined total. The menu and command help spell out these inputs instead of calling them a "condition."
++
+ ```bash
+ python -m beamweaver train runs/data/schema_v4_data.npz --resume runs/training
+ python -m beamweaver train runs/data/schema_v4_data.npz --resume runs/training --factor comp_u

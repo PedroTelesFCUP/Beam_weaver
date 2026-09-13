@@ -1,0 +1,39 @@
+{
+  "fixture_kind": "artificial tables, not physical validation",
+  "cases": [
+    {
+      "energy_MeV": 0.05,
+      "histories": 6,
+      "interactions": 23,
+      "banked_photons": 10,
+      "pairs": 0,
+      "max_ledger_error_MeV": 6.938893903907228e-18,
+      "dose_sum_MeV": 0.2985863983631134,
+      "exact_output_and_rng_match": true,
+      "result_sha256": "ef0bebf9a8ae23e4ccdfc3e9ea186d149eb817b48fdac1b023523432c2b3bb5e"
+    },
+    {
+      "energy_MeV": 2.0,
+      "histories": 6,
+      "interactions": 258,
+      "banked_photons": 182,
+      "pairs": 4,
+      "max_ledger_error_MeV": 4.440892098500626e-16,
+      "dose_sum_MeV": 10.925430297851562,
+      "exact_output_and_rng_match": true,
+      "result_sha256": "703c8240ef137992cdf018345423ec6ed1f6572da382cb36aa6ba91ea33c6325"
+    },
+    {
+      "energy_MeV": 5.0,
+      "histories": 6,
+      "interactions": 426,
+      "banked_photons": 256,
+      "pairs": 4,
+      "max_ledger_error_MeV": 1.4210854715202004e-14,
+      "dose_sum_MeV": 28.66153907775879,
+      "exact_output_and_rng_match": true,
+      "result_sha256": "a53ab438377aafab2b90fedb6aa7b3bc5d335766552312847c7a9212a360f038"
+    }
+  ],
+  "passed": true
+}

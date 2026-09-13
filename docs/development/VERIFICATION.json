@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-12",
+  "scope": "constants consolidation and rest-energy harmonization",
+  "tests": {
+    "run": 29,
+    "passed": 29,
+    "skipped": 0,
+    "torch": "2.14.0+cpu",
+    "original_source_comparison": true
+  },
+  "stage1": "exact behavior/RNG comparison against baseline with two obsolete lepton keywords removed",
+  "stage2": "only expected threshold, provenance and learned reconstruction differences",
+  "patch_replay": {
+    "passed": true,
+    "files_compared": 28
+  },
+  "reference_golden_events": "unchanged; only retired learned-rest-energy metadata omitted from current comparison",
+  "fixtures": "artificial; execution and regression, not physical validation",
+  "not_executed": [
+    "CUDA",
+    "production water tables",
+    "production trained checkpoint/PDD",
+    "external Monte Carlo benchmark"
+  ],
+  "evidence_directory": "verification",
+  "sampling_wording_update": {
+    "date": "2026-09-13",
+    "scope": "menu, help, generation progress messages and README",
+    "patch": "review/03-clarify-sampling-counts.patch",
+    "python_changes": "string values only; AST structure identical",
+    "help_checks": [
+      "generate --help",
+      "validate --help"
+    ],
+    "physics_training_and_random_streams": "unchanged"
+  },
+  "training_wording_update": {
+    "date": "2026-09-13",
+    "scope": "option 2, training help, prompts, messages and README",
+    "patch": "review/04-clarify-training-heads.patch",
+    "python_changes": "string values only; AST structure identical",
+    "checks": [
+      "main menu and exit",
+      "--help",
+      "train --help"
+    ],
+    "training_and_checkpoint_behavior": "unchanged"
+  }
+}

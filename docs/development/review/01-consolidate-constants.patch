@@ -1,0 +1,1579 @@
+--- a/beamweaver/audit.py
++++ b/beamweaver/audit.py
+@@ -1,6 +1,13 @@
+ """Beam Weaver: audit."""
+ 
+ # Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
++
++from .constants import (
++    PROCESS_INDEX,
++    NEGATIVE_ENERGY_ATOL_MEV,
++    EVENT_ENERGY_BALANCE_ATOL_MEV,
++    KEV_PER_MEV,
++)
+ 
+ from contextlib import contextmanager
+ import csv
+@@ -85,16 +92,16 @@
+         setattr(a, attr, getattr(a, attr) + 1)
+         if not 0.0 <= theta_deg <= 180.0: a.invalid_theta += 1
+         if not 0.0 <= phi_deg < 360.0: a.invalid_phi += 1
+-        if process == 2 and not 0 <= shell < len(SHELL_NAMES):
++        if process == PROCESS_INDEX["photo"] and not 0 <= shell < len(SHELL_NAMES):
+             a.invalid_photo_shell += 1
+-        if process != 2 and shell >= 0:
++        if process != PROCESS_INDEX["photo"] and shell >= 0:
+             a.nonphoto_shell_assignments += 1
+-        if E_out < -1e-12 or sec_E < -1e-12: a.negative_energy += 1
++        if E_out < -NEGATIVE_ENERGY_ATOL_MEV or sec_E < -NEGATIVE_ENERGY_ATOL_MEV: a.negative_energy += 1
+         a.compton_error_sum_mev += compton_err
+         a.compton_error_max_mev = max(a.compton_error_max_mev, compton_err)
+         a.energy_error_sum_mev += ebal_err
+         a.energy_error_max_mev = max(a.energy_error_max_mev, ebal_err)
+-        if ebal_err > 1e-3: a.energy_balance_failures += 1
++        if ebal_err > EVENT_ENERGY_BALANCE_ATOL_MEV: a.energy_balance_failures += 1
+         if event_id < self.trace_first_n:
+             self._tw.writerow({"event_id": event_id, "photon_id": photon_id,
+                 "interaction_index": k, "source": "physics_head",
+@@ -103,8 +110,8 @@
+                 "E_in_MeV": E_in, "free_path_cm": free_path,
+                 "theta_deg": theta_deg, "phi_deg": phi_deg, "E_out_MeV": E_out,
+                 "secondary_energy_MeV": sec_E, "x_cm": pos[0], "y_cm": pos[1],
+-                "z_cm": pos[2], "compton_error_keV": 1e3 * compton_err,
+-                "energy_balance_error_keV": 1e3 * ebal_err})
++                "z_cm": pos[2], "compton_error_keV": KEV_PER_MEV * compton_err,
++                "energy_balance_error_keV": KEV_PER_MEV * ebal_err})
+             self._tf.flush()
+         if a.total_events % self.progress_every == 0:
+             self.print_progress()
+@@ -121,15 +128,15 @@
+         print(f"[physics-head inference] events={a.total_events:,} "
+               f"rate={rate:,.0f}/s | R={a.rayleigh_events/n:.3f} "
+               f"C={a.compton_events/n:.3f} P={a.photo_events/n:.3f} | "
+-              f"max dE_C={1e3*a.compton_error_max_mev:.2e} keV "
+-              f"max dE={1e3*a.energy_error_max_mev:.2e} keV")
++              f"max dE_C={KEV_PER_MEV*a.compton_error_max_mev:.2e} keV "
++              f"max dE={KEV_PER_MEV*a.energy_error_max_mev:.2e} keV")
+ 
+     def log_process_energy(self, process, E_in):
+         if not hasattr(self, "_pe_counts"):
+             self._pe_counts = {}
+-        key = f"{PROCESS_NAMES[process]}_{'%.0f' % (E_in * 1000)}keV" \
++        key = f"{PROCESS_NAMES[process]}_{'%.0f' % (E_in * KEV_PER_MEV)}keV" \
+             if E_in < 0.01 else \
+-            f"{PROCESS_NAMES[process]}_{int(E_in * 1000)//50*50}-{int(E_in*1000)//50*50+50}keV"
++            f"{PROCESS_NAMES[process]}_{int(E_in * KEV_PER_MEV)//50*50}-{int(E_in*KEV_PER_MEV)//50*50+50}keV"
+         self._pe_counts[key] = self._pe_counts.get(key, 0) + 1
+ 
+     def finalize(self):
+@@ -188,8 +195,8 @@
+                 "configuration": "Declared by the evaluation caller, not independently measured.",
+             },
+             "elapsed_seconds": time.perf_counter() - self.t0,
+-            "mean_compton_error_keV": 1e3 * a.compton_error_sum_mev / max(a.compton_events, 1),
+-            "mean_energy_balance_error_keV": 1e3 * a.energy_error_sum_mev / max(a.total_events, 1),
++            "mean_compton_error_keV": KEV_PER_MEV * a.compton_error_sum_mev / max(a.compton_events, 1),
++            "mean_energy_balance_error_keV": KEV_PER_MEV * a.energy_error_sum_mev / max(a.total_events, 1),
+             "process_energy_counts": getattr(self, "_pe_counts", {}),
+             "shell_mode": declared["shell_mode"],
+             "inference_source_verified": verified,
+--- a/beamweaver/cli.py
++++ b/beamweaver/cli.py
+@@ -11,6 +11,18 @@
+ from pathlib import Path
+ import sys
+ 
++from .constants import (
++    BW_VERSION, BW4_EMIN_MEV, BW4_EMAX_MEV, BW4_M_DEFAULT,
++    DEFAULT_TRANSPORT_ECUT_MEV, DEFAULT_TRAIN_BATCH_SIZE,
++    DEFAULT_INFERENCE_BATCH_SIZE, DEFAULT_FACTOR_VALIDATION_SAMPLES,
++    DEFAULT_REFERENCE_VALIDATION_SAMPLES, DEFAULT_RUN_ENERGY_MEV,
++    DEFAULT_RUN_HISTORIES, DEFAULT_COMPARISON_ENERGIES,
++    DEFAULT_COMPARISON_HISTORIES, PHOTON_CROSS_SECTION_TABLE,
++    RAYLEIGH_CROSS_SECTION_TABLE, PHOTO_SHELL_TABLE,
++    COHERENT_FORM_FACTOR_TABLE, INCOHERENT_SCATTERING_TABLE,
++    ELECTRON_STOPPING_POWER_TABLE,
++)
++
+ 
+ ###############################################################################
+ #                           HEADER
+@@ -24,7 +36,7 @@
+ ║  | |_) |  __/ (_| | | | | | |   \ V  V /  __/ (_| |\ V /  __/ |   ║
+ ║  |____/ \___|\__,_|_| |_| |_|    \_/\_/ \___|\__,_| \_/ \___|_|   ║
+ ║                                                                   ║
+-║                        v 0 . 4 . 0                                ║
++║                        v {version:<41}║
+ ║                                                                   ║
+ ║  Learned-kernel Monte Carlo photon transport                      ║
+ ║  Supervised stochastic transport kernel                           ║
+@@ -46,11 +58,11 @@
+ ║  GitHub: https://github.com/PedroTelesFCUP/beam-weaver            ║
+ ║                                                                   ║
+ ╚═══════════════════════════════════════════════════════════════════╝
+-"""
+-
+-
+-_MATERIAL_TABLES = ("Final_cross_sections.csv", "Rayleigh_cross_sections.csv",
+-                    "WaterPhotoShells.csv", "water_fq.csv")
++""".format(version=" . ".join(BW_VERSION.split(".")))
++
++
++_MATERIAL_TABLES = (PHOTON_CROSS_SECTION_TABLE, RAYLEIGH_CROSS_SECTION_TABLE,
++                    PHOTO_SHELL_TABLE, COHERENT_FORM_FACTOR_TABLE)
+ 
+ 
+ def _positive_int(value):
+@@ -62,8 +74,9 @@
+ 
+ def _energy(value):
+     number = float(value)
+-    if not math.isfinite(number) or not 0.001 <= number <= 10.0:
+-        raise argparse.ArgumentTypeError("energy must be in [0.001, 10.0] MeV")
++    if not math.isfinite(number) or not BW4_EMIN_MEV <= number <= BW4_EMAX_MEV:
++        raise argparse.ArgumentTypeError(
++            f"energy must be in [{BW4_EMIN_MEV}, {BW4_EMAX_MEV}] MeV")
+     return number
+ 
+ 
+@@ -102,11 +115,11 @@
+                           help="events per condition for every factor; default preserves factor-specific counts")
+ 
+     generate.add_argument("--categorical-events", type=_positive_int, metavar="N",
+-                          help="process/shell events per condition (default: 32768)")
++                          help=f"process/shell events per condition (default: {BW4_M_DEFAULT['process']})")
+     generate.add_argument("--continuous-events", type=_positive_int, metavar="N",
+-                          help="Rayleigh/Compton/photo events per condition (default: 8192)")
++                          help=f"Rayleigh/Compton/photo events per condition (default: {BW4_M_DEFAULT['ray']})")
+     generate.add_argument("--pair-events", type=_positive_int, metavar="N",
+-                          help="pair events per condition (default: 16384); group counts override --events")
++                          help=f"pair events per condition (default: {BW4_M_DEFAULT['pair']}); group counts override --events")
+ 
+     train = commands.add_parser("train", help="train all heads or one selected factor")
+     train.add_argument("dataset", help="schema-v4 .npz dataset")
+@@ -118,28 +131,28 @@
+     train.add_argument("--factor", help="train/retrain one factor (e.g. process, comp_u, pair_frac)")
+     train.add_argument("--epochs", type=_positive_int,
+                        help="override each head's existing epoch limit")
+-    train.add_argument("--batch", type=_positive_int, default=8192,
+-                       help="training batch size (default: 8192)")
++    train.add_argument("--batch", type=_positive_int, default=DEFAULT_TRAIN_BATCH_SIZE,
++                       help=f"training batch size (default: {DEFAULT_TRAIN_BATCH_SIZE})")
+ 
+     run = commands.add_parser("run", help="run an audited single-energy shower")
+-    run.add_argument("checkpoint", help="complete v0.4.0 policy checkpoint")
++    run.add_argument("checkpoint", help=f"complete v{BW_VERSION} policy checkpoint")
+     data_options(run)
+     output_options(run)
+     device_options(run)
+-    run.add_argument("--energy", type=_energy, default=1.0, metavar="MEV")
+-    run.add_argument("--histories", type=_positive_int, default=500)
++    run.add_argument("--energy", type=_energy, default=DEFAULT_RUN_ENERGY_MEV, metavar="MEV")
++    run.add_argument("--histories", type=_positive_int, default=DEFAULT_RUN_HISTORIES)
+ 
+     compare = commands.add_parser("compare", help="compare MC1, MC2 and BeamWeaver")
+-    compare.add_argument("checkpoint", help="complete v0.4.0 policy checkpoint")
++    compare.add_argument("checkpoint", help=f"complete v{BW_VERSION} policy checkpoint")
+     data_options(compare)
+     output_options(compare)
+     device_options(compare)
+     compare.add_argument("--energies", type=_energies,
+-                         default=[0.05, 0.5, 1.0, 5.0], metavar="MEV,...")
+-    compare.add_argument("--histories", type=_positive_int, default=2000,
+-                         help="histories per arm and energy (default: 2000)")
+-    compare.add_argument("--batch", type=_positive_int, default=256,
+-                         help="BeamWeaver inference batch size (default: 256)")
++                         default=list(DEFAULT_COMPARISON_ENERGIES), metavar="MEV,...")
++    compare.add_argument("--histories", type=_positive_int, default=DEFAULT_COMPARISON_HISTORIES,
++                         help=f"histories per arm and energy (default: {DEFAULT_COMPARISON_HISTORIES})")
++    compare.add_argument("--batch", type=_positive_int, default=DEFAULT_INFERENCE_BATCH_SIZE,
++                         help=f"BeamWeaver inference batch size (default: {DEFAULT_INFERENCE_BATCH_SIZE})")
+ 
+     validate = commands.add_parser("validate", help="validate learned factors or reference samplers")
+     validate.add_argument("checkpoint", nargs="?", help="policy checkpoint (required unless --reference)")
+@@ -150,7 +163,8 @@
+     device_options(validate)
+     validate.add_argument("--energies", type=_energies, metavar="MEV,...")
+     validate.add_argument("--samples", type=_positive_int,
+-                          help="MC samples per condition (default: 8192 for factors, 100000 for --reference)")
++                          help=f"MC samples per condition (default: {DEFAULT_FACTOR_VALIDATION_SAMPLES} "
++                               f"for factors, {DEFAULT_REFERENCE_VALIDATION_SAMPLES} for --reference)")
+     validate.add_argument("--no-figures", action="store_true")
+ 
+     report = commands.add_parser("report", help="rebuild figures from a saved comparison")
+@@ -171,9 +185,9 @@
+     data_dir = Path(value).expanduser().resolve()
+     tables = list(_MATERIAL_TABLES)
+     if command in ("generate", "compare", "validate"):
+-        tables.append("water_sq.csv")
++        tables.append(INCOHERENT_SCATTERING_TABLE)
+     if command in ("run", "compare"):
+-        tables.append("ElectronStoppingPower.csv")
++        tables.append(ELECTRON_STOPPING_POWER_TABLE)
+     missing = [name for name in tables if not (data_dir / name).is_file()]
+     if missing:
+         raise FileNotFoundError(
+@@ -199,8 +213,8 @@
+ 
+ def _load_data():
+     from .materials import WaterPhotonData
+-    return WaterPhotonData("Final_cross_sections.csv",
+-                                "Rayleigh_cross_sections.csv")
++    return WaterPhotonData(PHOTON_CROSS_SECTION_TABLE,
++                                RAYLEIGH_CROSS_SECTION_TABLE)
+ 
+ 
+ def _device(value):
+@@ -297,7 +311,6 @@
+             from .dataset import generate_dataset, write_generator_spec
+             from .coordinates import transform_selftest
+             transform_selftest()
+-            from .constants import BW4_M_DEFAULT
+             counts = dict(BW4_M_DEFAULT)
+             kwargs = {}
+             if args.smoke:
+@@ -322,7 +335,8 @@
+ 
+         if reference:
+             from .validation import validate_reference_samplers
+-            report = validate_reference_samplers(data, n_samples=args.samples or 100_000)
++            report = validate_reference_samplers(
++                data, n_samples=args.samples or DEFAULT_REFERENCE_VALIDATION_SAMPLES)
+             (run_dir / "reference_validation.json").write_text(json.dumps(report, indent=2))
+             return run_dir
+ 
+@@ -332,13 +346,15 @@
+         if command == "validate":
+             from .validation import validate_policy
+             validate_policy(policy, data, energies=args.energies,
+-                                 M=args.samples or 8192, out_json="validation.json",
++                                 M=args.samples or DEFAULT_FACTOR_VALIDATION_SAMPLES,
++                                 out_json="validation.json",
+                                  output_dir=str(run_dir), figures=not args.no_figures)
+             return run_dir
+ 
+         from .geometry import WaterPhantom
+-        env = WaterPhantom(data, fixed_energy=getattr(args, "energy", 1.0),
+-                           ecut=0.001, energy_range=(0.001, 10.0))
++        env = WaterPhantom(data, fixed_energy=getattr(args, "energy", DEFAULT_RUN_ENERGY_MEV),
++                           ecut=DEFAULT_TRANSPORT_ECUT_MEV,
++                           energy_range=(BW4_EMIN_MEV, BW4_EMAX_MEV))
+         if command == "run":
+             from .evaluation import evaluate_transport
+             evaluate_transport(policy, data, env, args.energy,
+@@ -364,7 +380,7 @@
+     checkpoint = "v040_policy.pt"
+     data_dir = "."
+     while True:
+-        print("\nBeam Weaver 0.4.0\n"
++        print(f"\nBeam Weaver {BW_VERSION}\n"
+               "  1  Generate training/validation/test data\n"
+               "  2  Train policy (all heads or one factor)\n"
+               "  3  Run an audited shower\n"
+@@ -404,18 +420,21 @@
+                 if _ask("Reduced smoke dataset? y/N", "N").lower() == "y":
+                     argv.append("--smoke")
+                 else:
+-                    argv.extend(["--categorical-events", _ask("Process/shell events per condition", "32768"),
+-                                 "--continuous-events", _ask("Rayleigh/Compton/photo events per condition", "8192"),
+-                                 "--pair-events", _ask("Pair events per condition", "16384")])
++                    argv.extend(["--categorical-events", _ask("Process/shell events per condition", BW4_M_DEFAULT["process"]),
++                                 "--continuous-events", _ask("Rayleigh/Compton/photo events per condition", BW4_M_DEFAULT["ray"]),
++                                 "--pair-events", _ask("Pair events per condition", BW4_M_DEFAULT["pair"])])
+             elif command == "run":
+-                argv.extend(["--energy", _ask("Photon energy (MeV)", "1.0"),
+-                             "--histories", _ask("Histories", "500")])
++                argv.extend(["--energy", _ask("Photon energy (MeV)", DEFAULT_RUN_ENERGY_MEV),
++                             "--histories", _ask("Histories", DEFAULT_RUN_HISTORIES)])
+             elif command == "compare":
+-                argv.extend(["--energies", _ask("Energies (MeV, comma separated)", "0.05,0.5,1.0,5.0"),
+-                             "--histories", _ask("Histories per arm", "2000")])
++                argv.extend(["--energies", _ask("Energies (MeV, comma separated)",
++                                              ",".join(map(str, DEFAULT_COMPARISON_ENERGIES))),
++                             "--histories", _ask("Histories per arm", DEFAULT_COMPARISON_HISTORIES)])
+             elif command == "validate":
+                 argv.extend(["--samples", _ask("MC samples per condition",
+-                                              "100000" if "--reference" in argv else "8192")])
++                                              DEFAULT_REFERENCE_VALIDATION_SAMPLES
++                                              if "--reference" in argv
++                                              else DEFAULT_FACTOR_VALIDATION_SAMPLES)])
+             if "--resume" not in argv:
+                 output = _ask("Output run directory (blank = automatic)")
+                 if output:
+--- a/beamweaver/constants.py
++++ b/beamweaver/constants.py
+@@ -16,23 +16,67 @@
+ 
+ HC_KEV_A = 12.3984
+ 
+-PHOTO_SHELL_BINDINGS = {
++KEV_PER_MEV = 1000.0
++MEV_PER_EV = 1e-6
++HC_MEV_A = HC_KEV_A / KEV_PER_MEV
++
++PHOTO_SHELL_BINDINGS_EV = {
+     "H_K": 13.6,
+     "O_K": 532.0,
+     "O_L1": 40.0,
+     "O_L2": 17.0,
+     "O_L3": 17.0,
+ }
++PHOTO_SHELL_BINDINGS_MEV = {
++    shell: energy * MEV_PER_EV
++    for shell, energy in PHOTO_SHELL_BINDINGS_EV.items()
++}
+ 
+ PROCESS_NAMES = ["rayleigh", "compton", "photo", "pair"]
+ 
+ SHELL_NAMES = ["H_K", "O_K", "O_L1", "O_L2", "O_L3"]
++N_PROCESSES = len(PROCESS_NAMES)
++N_SHELLS = len(SHELL_NAMES)
++PROCESS_INDEX = {name: i for i, name in enumerate(PROCESS_NAMES)}
++SHELL_INDEX = {name: i for i, name in enumerate(SHELL_NAMES)}
+ 
+ MEC2_MEV = 0.5109989
+ 
+-EVAL_MAX_STEPS = 100_000
++# Transport defaults are independent of the learned energy domain.
++DEFAULT_TRANSPORT_ECUT_MEV = 0.001
++TRANSPORT_MAX_STEPS = 100_000
++SOURCE_FIELD_WIDTH_CM = 10.0
++SOURCE_FIELD_HALF_WIDTH_CM = SOURCE_FIELD_WIDTH_CM / 2.0
+ 
+-HC_MEV_A = 12.3984 / 1000
++# Each numerical guard has its own meaning and units.
++DIRECTION_FRAME_SWITCH = 0.9999
++HISTORY_CLOSURE_ATOL_MEV = 2e-6
++ATTENUATION_FLOOR_CM_INV = 1e-30
++SHELL_CROSS_SECTION_FLOOR_CM2_G = 1e-30
++FREE_PATH_RANDOM_FLOOR = 1e-300
++LEARNED_RECOIL_MOMENTUM_FLOOR_MEV_C = 1e-12
++EVENT_ENERGY_BALANCE_ATOL_MEV = 1e-3
++NEGATIVE_ENERGY_ATOL_MEV = 1e-12
++PERFORMANCE_TIME_FLOOR_S = 1e-9
++
++# File names are shared; each workflow selects the tables it requires.
++PHOTON_CROSS_SECTION_TABLE = "Final_cross_sections.csv"
++RAYLEIGH_CROSS_SECTION_TABLE = "Rayleigh_cross_sections.csv"
++PHOTO_SHELL_TABLE = "WaterPhotoShells.csv"
++COHERENT_FORM_FACTOR_TABLE = "water_fq.csv"
++INCOHERENT_SCATTERING_TABLE = "water_sq.csv"
++ELECTRON_STOPPING_POWER_TABLE = "ElectronStoppingPower.csv"
++
++# Equal counts for different workloads remain independent controls.
++DEFAULT_TRAIN_BATCH_SIZE = 8192
++DEFAULT_INFERENCE_BATCH_SIZE = 256
++DEFAULT_FACTOR_VALIDATION_SAMPLES = 8192
++DEFAULT_REFERENCE_VALIDATION_SAMPLES = 100_000
++REFERENCE_POLAR_GRID_POINTS = 180
++DEFAULT_RUN_ENERGY_MEV = 1.0
++DEFAULT_RUN_HISTORIES = 500
++DEFAULT_COMPARISON_ENERGIES = (0.05, 0.5, 1.0, 5.0)
++DEFAULT_COMPARISON_HISTORIES = 2000
+ 
+ _PAIR_ALPHA_FS = 1.0 / 137.035999177
+ 
+@@ -45,8 +89,10 @@
+ 
+ BW4_EMIN_MEV, BW4_EMAX_MEV = 0.001, 10.0
+ 
+-BW4_NORM_LOGE_SPEC = ("x = 2*(log10(E/0.001)/log10(10000)) - 1 on "
+-                      "[0.001,10] MeV -> [-1,1]")
++BW4_NORM_LOGE_SPEC = (
++    f"x = 2*(log10(E/{BW4_EMIN_MEV:g})/"
++    f"log10({BW4_EMAX_MEV / BW4_EMIN_MEV:g})) - 1 on "
++    f"[{BW4_EMIN_MEV:g},{BW4_EMAX_MEV:g}] MeV -> [-1,1]")
+ 
+ BW4_PAIR_TRAIN_EXTRA = [1.023, 1.03, 1.05, 1.075, 1.10]
+ 
+@@ -73,19 +119,20 @@
+     "photo_nu": "nu=1-cos t in [0,2]",
+     "pair": "f=T-/(T-+T+); nu±=1-cos t±; phi± independent; lepton input "
+             "f_lep=T_lep/(E-2mec2)",
+-    "phi": "36 equal circular bins on [0,2pi); valid iff sin t>1e-6"}
++    "phi": (f"{BW4_K['phi']} equal circular bins on [0,2pi); valid iff sin t>"
++            + format(BW4_PHI_EPS, "g").replace("e-0", "e-"))}
+ 
+ _BW4_Z = np.array([0.0, 0.0, 1.0])
+ 
+ BW4_FACTOR_HEADS = {
+-    "process": ("process_head", 1, 4),
+-    "shell": ("shell_head", 1, 5),
++    "process": ("process_head", 1, N_PROCESSES),
++    "shell": ("shell_head", 1, N_SHELLS),
+     "ray_q2": ("rayleigh_q2_head", 1, None),
+     "ray_phi": ("rayleigh_phi_head", 0, None),
+     "comp_u": ("compton_u_head", 1, None),
+     "comp_phi": ("compton_phi_head", 0, None),
+-    "photo_nu": ("photo_nu_head", 6, None),
+-    "photo_phi": ("photo_phi_head", 5, None),
++    "photo_nu": ("photo_nu_head", 1 + N_SHELLS, None),
++    "photo_phi": ("photo_phi_head", N_SHELLS, None),
+     "pair_frac": ("pair_fraction_head", 1, None),
+     "pair_e_polar": ("pair_electron_polar_head", 2, None),
+     "pair_e_phi": ("pair_electron_phi_head", 2, None),
+--- a/beamweaver/coordinates.py
++++ b/beamweaver/coordinates.py
+@@ -1,6 +1,10 @@
+ """Beam Weaver: coordinates."""
+ 
+ # Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
++
++from .constants import (
++    KEV_PER_MEV,
++)
+ 
+ from .constants import BW4_EMAX_MEV
+ from .constants import BW4_EMIN_MEV
+@@ -16,7 +20,7 @@
+ 
+ 
+ def k_invA(E):
+-    return np.asarray(E, np.float64) * 1e3 / HC_KEV_A
++    return np.asarray(E, np.float64) * KEV_PER_MEV / HC_KEV_A
+ 
+ 
+ def q2max(E):
+--- a/beamweaver/dataset.py
++++ b/beamweaver/dataset.py
+@@ -15,6 +15,12 @@
+ from .constants import SHELL_NAMES
+ from .constants import BW4_S_SUB
+ from .constants import BW4_TEST_E
++from .constants import (
++    BW_VERSION, N_SHELLS,
++    PHOTON_CROSS_SECTION_TABLE, RAYLEIGH_CROSS_SECTION_TABLE,
++    PHOTO_SHELL_TABLE, INCOHERENT_SCATTERING_TABLE,
++    COHERENT_FORM_FACTOR_TABLE, ELECTRON_STOPPING_POWER_TABLE,
++)
+ from .physics import ComptonEnergyTransferSampler
+ from .constants import MEC2_MEV
+ _BW4_NULLC = {}  # Computed values cached for this module.
+@@ -135,7 +141,7 @@
+     for E in E_grid:
+         E = float(E)
+         if factor == "photo":
+-            out += [(E, s) for s in range(5)]
++            out += [(E, s) for s in range(N_SHELLS)]
+         elif factor == "pair":
+             if E > thr:
+                 out.append((E, None))
+@@ -189,7 +195,7 @@
+     if grid_stride > 1:
+         grids["train"] = np.unique(np.concatenate(
+             [grids["train"], np.array(BW4_PAIR_TRAIN_EXTRA)]))
+-    arrays, mani = {}, {"tool": "v0.4.0", "grid_sha256": g["sha256"],
++    arrays, mani = {}, {"tool": f"v{BW_VERSION}", "grid_sha256": g["sha256"],
+                         "grid_stride": grid_stride, "M": M, "groups": {}}
+     gens = {"process": lambda E, s, m, sd: sample_process_counts(E, m, data, sd),
+             "shell": lambda E, s, m, sd: sample_shell_counts(E, m, data, sd),
+@@ -220,10 +226,10 @@
+         mani.setdefault("edges", {})[nm] = {
+             "K": int(len(e) - 1),
+             "sha256": hashlib.sha256(e.tobytes()).hexdigest()}
+-    csvs = ("Final_cross_sections.csv", "Rayleigh_cross_sections.csv",
+-            "WaterPhotoShells.csv", "water_sq.csv", "water_fq.csv",
+-            "ElectronStoppingPower.csv")
+-    meta = {"schema_version": 4, "tool": "v0.4.0",
++    csvs = (PHOTON_CROSS_SECTION_TABLE, RAYLEIGH_CROSS_SECTION_TABLE,
++            PHOTO_SHELL_TABLE, INCOHERENT_SCATTERING_TABLE,
++            COHERENT_FORM_FACTOR_TABLE, ELECTRON_STOPPING_POWER_TABLE)
++    meta = {"schema_version": 4, "tool": f"v{BW_VERSION}",
+             "norm_logE": BW4_NORM_LOGE_SPEC, "coordinates": BW4_COORDS,
+             "process_order": PROCESS_NAMES, "shell_order": SHELL_NAMES,
+             "pair_threshold_MeV": thr, "phi_valid_eps": BW4_PHI_EPS,
+@@ -343,7 +349,7 @@
+ 
+ def write_generator_spec(path="schema_v4_generator_spec.json"):
+     g = build_energy_grids()
+-    spec = {"tool": "v0.4.0", "norm_logE": BW4_NORM_LOGE_SPEC,
++    spec = {"tool": f"v{BW_VERSION}", "norm_logE": BW4_NORM_LOGE_SPEC,
+             "coordinates": BW4_COORDS, "bin_counts": BW4_K,
+             "M_defaults": BW4_M_DEFAULT,
+             "grids": {k: (g[k].tolist() if hasattr(g[k], "tolist") else g[k])
+--- a/beamweaver/evaluation.py
++++ b/beamweaver/evaluation.py
+@@ -1,6 +1,13 @@
+ """Audited Beam Weaver showers and independent MC reference comparisons."""
+ 
+ # Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
++
++from .constants import (
++    DEFAULT_INFERENCE_BATCH_SIZE,
++    DEFAULT_TRANSPORT_ECUT_MEV,
++    PERFORMANCE_TIME_FLOOR_S,
++    CURRENT_POLICY_SCHEMA,
++)
+ 
+ import json
+ from pathlib import Path
+@@ -24,7 +31,7 @@
+ 
+ 
+ def compare_transport(policy, data, env, energies, n_hist,
+-                              device="cpu", batch=256,
++                              device="cpu", batch=DEFAULT_INFERENCE_BATCH_SIZE,
+                               save_dir="comparison", verbose=True):
+     """Compare MC1, MC2 and BeamWeaver; save raw dose arrays and a summary.
+ 
+@@ -58,12 +65,12 @@
+             t0 = time.perf_counter()
+             if arm in ("MC1", "MC2"):
+                 _, secs, dose, inter = run_reference_transport(
+-                    n_hist, data, env, ecut=0.001)
++                    n_hist, data, env, ecut=DEFAULT_TRANSPORT_ECUT_MEV)
+             else:
+                 generator = torch.Generator(device=device).manual_seed(seed)
+                 with reference_sampler_guard(None):
+                     _, secs, dose, inter, _ = run_learned_transport_batched(
+-                        policy, data, env, n_hist, E0=E0, ecut=0.001,
++                        policy, data, env, n_hist, E0=E0, ecut=DEFAULT_TRANSPORT_ECUT_MEV,
+                         device=device, inference_batch_size=batch,
+                         generator=generator)
+             wall = time.perf_counter() - t0
+@@ -77,7 +84,7 @@
+                         "n_interactions": len(names),
+                         "dose_sum": float(np.asarray(dose).sum()),
+                         "n_secondaries": len(secs), "wall_s": wall,
+-                        "hist_per_s": n_hist / max(wall, 1e-9),
++                        "hist_per_s": n_hist / max(wall, PERFORMANCE_TIME_FLOOR_S),
+                         "dose_file": dose_file}
+         row["MC_floor"] = {
+             "dose_sum_absdiff": abs(row["MC1"]["dose_sum"]
+@@ -113,7 +120,7 @@
+     save_dir = Path(save_dir or f"evaluation_E{E0}")
+     save_dir.mkdir(parents=True, exist_ok=True)
+     exec_logger = TransportExecutionLogger(save_dir / "execution")
+-    exec_logger.checkpoint_schema = "beam_weaver_generative_policy_v040"
++    exec_logger.checkpoint_schema = CURRENT_POLICY_SCHEMA
+     exec_logger.kernel_architecture = type(policy).__name__
+     exec_logger.free_path_source = "analytic_tabulated"
+     exec_logger.shell_mode = "learned"
+@@ -125,14 +132,14 @@
+     t0 = time.perf_counter()
+     with reference_sampler_guard(exec_logger.audit):
+         tracks, secs, dose, inter = run_learned_transport(
+-            policy, data, env, n_hist, E0=E0, ecut=0.001,
++            policy, data, env, n_hist, E0=E0, ecut=DEFAULT_TRANSPORT_ECUT_MEV,
+             device=device, exec_logger=exec_logger, generator=generator)
+     wall = time.perf_counter() - t0
+     certificate = exec_logger.finalize()
+     np.save(save_dir / "dose.npy", np.asarray(dose))
+     report = {"schema": "beamweaver_evaluation_v1", "E0": E0,
+               "n_histories": n_hist, "seed": seed, "wall_s": wall,
+-              "hist_per_s": n_hist / max(wall, 1e-9),
++              "hist_per_s": n_hist / max(wall, PERFORMANCE_TIME_FLOOR_S),
+               "n_interactions": len(inter), "n_secondaries": len(secs),
+               "dose_sum": float(np.asarray(dose).sum()),
+               "certificate": certificate}
+--- a/beamweaver/geometry.py
++++ b/beamweaver/geometry.py
+@@ -6,6 +6,15 @@
+ import random
+ 
+ import numpy as np
++
++from .constants import (
++    BW4_EMAX_MEV,
++    BW4_EMIN_MEV,
++    DEFAULT_TRANSPORT_ECUT_MEV,
++    DIRECTION_FRAME_SWITCH,
++    SOURCE_FIELD_HALF_WIDTH_CM,
++    SOURCE_FIELD_WIDTH_CM,
++)
+ 
+ 
+ class WaterPhantom:
+@@ -16,8 +25,9 @@
+     requires a separate mass normalization.
+     """
+ 
+-    def __init__(self, data, fixed_energy=0.1, ecut=0.001,
+-                 energy_range=(0.001, 10.0)):
++    def __init__(self, data, fixed_energy=0.1,
++                 ecut=DEFAULT_TRANSPORT_ECUT_MEV,
++                 energy_range=(BW4_EMIN_MEV, BW4_EMAX_MEV)):
+         self.data = data
+         self.fixed_energy = fixed_energy
+         self.ecut = ecut
+@@ -26,7 +36,7 @@
+         self.ymin, self.ymax = -50.0, 50.0
+         self.zmin, self.zmax = 0.0, 100.0
+         self.pdd_bins = 100
+-        self.dz = 1.0
++        self.dz = (self.zmax - self.zmin) / self.pdd_bins
+         self.dose_tally = np.zeros(self.pdd_bins, dtype=np.float32)
+         self.reset()
+ 
+@@ -41,8 +51,8 @@
+             random.seed(seed)
+             np.random.seed(seed)
+         self.steps = 0
+-        self.x = (random.random() * 10.0) - 5.0
+-        self.y = (random.random() * 10.0) - 5.0
++        self.x = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM
++        self.y = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM
+         self.z = 0.0
+         self.initial_position = (self.x, self.y, self.z)
+         self.u, self.v, self.w = (0.0, 0.0, 1.0)
+@@ -56,7 +66,7 @@
+         incident and scattered direction vectors.
+         This is the inverse of rotate_direction(inc_dir, theta, phi).
+         """
+-        # rotate_direction (|uz| < 0.9999 branch) builds the orthonormal local
++        # rotate_direction (|uz| < DIRECTION_FRAME_SWITCH) builds the orthonormal local
+         # frame
+         #     â = (ux·uz/denom, uy·uz/denom, −denom),  b̂ = (−uy/denom, ux/denom, 0),
+         #     denom = √(1 − uz²)
+@@ -67,7 +77,7 @@
+         if st < 1e-12:
+             return 0.0  # forward/backward — φ undefined
+         ux, uy, uz = inc_dir
+-        if abs(uz) < 0.9999:
++        if abs(uz) < DIRECTION_FRAME_SWITCH:
+             denom = math.sqrt(1.0 - uz * uz)
+             a_hat = (ux * uz / denom, uy * uz / denom, -denom)
+             b_hat = (-uy / denom, ux / denom, 0.0)
+@@ -90,7 +100,7 @@
+     observation vector. Keep its scalar rounding and clipping exactly
+     while eliminating the unused observation features.
+     """
+-    E_val = max(E, 1e-3)
++    E_val = max(E, BW4_EMIN_MEV)
+     logE = np.clip(math.log10(max(E_val, env.E_min)),
+                    math.log10(env.E_min), math.log10(env.E_max))
+     return 10.0 ** float(np.float32(logE))
+@@ -103,7 +113,7 @@
+     batched inference, which can round differently from the scalar path.
+     """
+     E = np.asarray(energies, dtype=float)
+-    E_val = np.maximum(E, 1e-3)
++    E_val = np.maximum(E, BW4_EMIN_MEV)
+     logE = np.clip(np.log10(np.maximum(E_val, env.E_min)),
+                    math.log10(env.E_min), math.log10(env.E_max))
+     return 10.0 ** logE.astype(np.float32).astype(np.float64)
+--- a/beamweaver/materials.py
++++ b/beamweaver/materials.py
+@@ -7,9 +7,18 @@
+ import pandas as pd
+ import random
+ 
++from .constants import (
++    COHERENT_FORM_FACTOR_TABLE,
++    HC_KEV_A,
++    N_SHELLS,
++    PHOTO_SHELL_TABLE,
++    SHELL_CROSS_SECTION_FLOOR_CM2_G,
++    SHELL_INDEX,
++)
++
+ 
+ class WaterPhotoShellData:
+-    def __init__(self, csv_path="WaterPhotoShells.csv"):
++    def __init__(self, csv_path=PHOTO_SHELL_TABLE):
+         df = pd.read_csv(csv_path)
+         self.Egrid = df["E_MeV"].values
+         self.HKvals  = df["H_K_cm2g"].values
+@@ -62,8 +71,8 @@
+                 (self.HKvals, self.OKvals, self.OL1vals,
+                  self.OL2vals, self.OL3vals)]
+         tot = sum(vals)
+-        if tot < 1e-30:
+-            return [0.0, 0.0, 0.0, 0.0, 0.0]
++        if tot < SHELL_CROSS_SECTION_FLOOR_CM2_G:
++            return [0.0] * N_SHELLS
+         return [v / tot for v in vals]
+ 
+     def sample_shell(self, E):
+@@ -74,7 +83,7 @@
+         OL3 = self._loglog_interp(E, self.Egrid, self.OL3vals)
+ 
+         total = HK + OK + OL1 + OL2 + OL3
+-        if total < 1e-30:
++        if total < SHELL_CROSS_SECTION_FLOOR_CM2_G:
+             return (None, 0.0)
+ 
+         r = random.random() * total
+@@ -98,8 +107,8 @@
+         final_csv_path: str,
+         rayleigh_csv_path: str,
+         density=1.0,
+-        water_shell_csv="WaterPhotoShells.csv",
+-        coherent_ff_csv="water_fq.csv",
++        water_shell_csv=PHOTO_SHELL_TABLE,
++        coherent_ff_csv=COHERENT_FORM_FACTOR_TABLE,
+     ):
+         # Load Rayleigh (coherent) cross-sections
+         df_rayleigh = pd.read_csv(rayleigh_csv_path)
+@@ -136,7 +145,7 @@
+         self.ff_x = self.ff_x[sort_idx_ff]
+         self.ff_F = self.ff_F[sort_idx_ff]
+         
+-        self.HC_KEV_A = 12.3984
++        self.HC_KEV_A = HC_KEV_A
+         self.F0 = self.coherent_form_factor(0.0)
+ 
+         # ── Rayleigh q²-CDF for numerical inverse-CDF sampling ────────────
+@@ -181,8 +190,7 @@
+         name,_ = self.water_shell_data.sample_shell(E)
+         if name is None: 
+             return None
+-        mapping = {"H_K": 0, "O_K": 1, "O_L1": 2, "O_L2": 3, "O_L3": 4}
+-        return mapping[name]
++        return SHELL_INDEX[name]
+     def coherent_form_factor(self, q_ang_inv):
+         """
+         Interpolate the tabulated water coherent form factor.
+--- a/beamweaver/physics.py
++++ b/beamweaver/physics.py
+@@ -2,9 +2,19 @@
+ 
+ # Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
+ 
+-from .constants import HC_MEV_A
+ import os
+-from .constants import PHOTO_SHELL_BINDINGS
++from .constants import (
++    ATTENUATION_FLOOR_CM_INV,
++    DEFAULT_TRANSPORT_ECUT_MEV,
++    DIRECTION_FRAME_SWITCH,
++    ELECTRON_STOPPING_POWER_TABLE,
++    HC_MEV_A,
++    INCOHERENT_SCATTERING_TABLE,
++    KEV_PER_MEV,
++    N_SHELLS,
++    PHOTO_SHELL_BINDINGS_MEV,
++    SHELL_NAMES,
++)
+ from .materials import WaterPhotonData
+ from .constants import _PAIR_ALPHA_FS
+ from .constants import _PAIR_R_EQ
+@@ -28,7 +38,7 @@
+                         # dataset generation / probes construct thousands of
+                         # samplers; this removes repeated file parsing only.
+ 
+-    def __init__(self, E_mev, sq_csv="water_sq.csv"):
++    def __init__(self, E_mev, sq_csv=INCOHERENT_SCATTERING_TABLE):
+         self.E = E_mev
+         self.alpha = E_mev / mec2
+         self.tau = 2.0 * self.alpha
+@@ -127,7 +137,7 @@
+     sp = math.sin(phi)
+     cp = math.cos(phi)
+     
+-    if abs(uz) < 0.9999:
++    if abs(uz) < DIRECTION_FRAME_SWITCH:
+         denom = math.sqrt(1.0 - uz*uz)
+         u2 = ux*ct + ((ux*uz*cp - uy*sp) / denom) * st
+         v2 = uy*ct + ((uy*uz*cp + ux*sp) / denom) * st
+@@ -158,10 +168,10 @@
+     64 rejection attempts returns a forward event. Those exceptional paths
+     are retained and should be assessed with the production tables.
+     """
+-    shell_onehot = [0, 0, 0, 0, 0]  # No shell activation for Rayleigh
++    shell_onehot = [0] * N_SHELLS  # No shell activation for Rayleigh
+ 
+     # Wave number in Å⁻¹;  Hubbell table variable x = q/2 ≤ k
+-    EkeV = E * 1e3                  # MeV → keV
++    EkeV = E * KEV_PER_MEV          # MeV → keV
+     k = EkeV / data.HC_KEV_A
+ 
+     xg, cdf = data._ray_x_grid, data._ray_cdf
+@@ -245,7 +255,7 @@
+     secs = [("electron", T, edir, "compton_e")]
+     
+     # Default shell onehot (no photoelectric event)
+-    shell_onehot = [0, 0, 0, 0, 0]
++    shell_onehot = [0] * N_SHELLS
+     
+     return (new_dir, Eout, secs, "compton", shell_onehot)
+ 
+@@ -275,10 +285,9 @@
+     stratified dataset — identical angular physics to sample_photoelectric_event
+     (Sauter for H_K/O_K, isotropic for L shells), shell imposed rather than
+     drawn, so every shell-conditioned head cell receives real support."""
+-    shellNames = ["H_K", "O_K", "O_L1", "O_L2", "O_L3"]
+-    shellName = shellNames[idx]
+-    shell_onehot = [0, 0, 0, 0, 0]; shell_onehot[idx] = 1
+-    E_e = E - PHOTO_SHELL_BINDINGS[shellName] * 1e-6
++    shellName = SHELL_NAMES[idx]
++    shell_onehot = [0] * N_SHELLS; shell_onehot[idx] = 1
++    E_e = E - PHOTO_SHELL_BINDINGS_MEV[shellName]
+     if E_e <= 0:
+         return (old_dir, E, [], "photo_failed", shell_onehot)
+     if shellName in ("H_K", "O_K"):
+@@ -300,14 +309,12 @@
+ def sample_photoelectric_event(E, old_dir, data):
+     idx = data.sample_photo_shell_index(E)
+     if idx is None:
+-        shell_onehot = [0, 0, 0, 0, 0]
++        shell_onehot = [0] * N_SHELLS
+         return (old_dir, E, [], "photo_none", shell_onehot)
+-    shellNames = ["H_K", "O_K", "O_L1", "O_L2", "O_L3"]
+-    shellName = shellNames[idx]
+-    shell_onehot = [0, 0, 0, 0, 0]
++    shellName = SHELL_NAMES[idx]
++    shell_onehot = [0] * N_SHELLS
+     shell_onehot[idx] = 1
+-    Eb_eV = PHOTO_SHELL_BINDINGS[shellName]
+-    Eb_MeV = Eb_eV * 1e-6
++    Eb_MeV = PHOTO_SHELL_BINDINGS_MEV[shellName]
+     E_e = E - Eb_MeV
+     if E_e <= 0:
+         return (old_dir, E, [], "photo_failed", shell_onehot)
+@@ -446,7 +453,7 @@
+     assigns is not modelled (Beam Weaver does not model atomic relaxation).
+     """
+     if E < 2 * mec2:
+-        return (old_dir, E, [], "pair_subthresh", [0, 0, 0, 0, 0])
++        return (old_dir, E, [], "pair_subthresh", [0] * N_SHELLS)
+     eps = _pair_sample_eps(E)             # electron TOTAL-energy fraction
+     eps_e = max(eps * E - mec2, 0.0)          # E_- = εE − me·c²   (kinetic)
+     eps_p = max((1.0 - eps) * E - mec2, 0.0)  # E_+ = (1−ε)E − me·c² (kinetic)
+@@ -463,14 +470,14 @@
+     secs = [("electron", eps_e, dir_e, "pair_e"),
+             ("positron", eps_p, dir_p, "pair_p")]
+     # Default shell onehot (no photoelectric event)
+-    shell_onehot = [0, 0, 0, 0, 0]
++    shell_onehot = [0] * N_SHELLS
+     return (np.array([0, 0, 0]), 0.0, secs, "pair", shell_onehot)
+ 
+ 
+ def sample_photon_interaction(E, direction, data:WaterPhotonData):
+     (coh,inc,pho,ppr,tot)= data.partial_cs(E)
+-    if tot<1e-30:
+-        return (direction,E,[],"none", [0,0,0,0,0])
++    if tot<ATTENUATION_FLOOR_CM_INV:
++        return (direction,E,[],"none", [0] * N_SHELLS)
+     r= random.random()*tot
+     if r<coh:
+         return sample_rayleigh_event(E,direction,data)
+@@ -483,7 +490,7 @@
+     return sample_pair_event(E,direction,data)
+ 
+ 
+-def load_stopping_power(csv_path="ElectronStoppingPower.csv"):
++def load_stopping_power(csv_path=ELECTRON_STOPPING_POWER_TABLE):
+     """Load both collisional and radiative stopping powers"""
+     df = pd.read_csv(csv_path)
+     return (
+@@ -504,7 +511,8 @@
+ 
+ def transport_lepton_csda(E_lepton, direction, start_pos, dose_tally, env,
+                           Egrid=None, S_col_vals=None,
+-                          S_rad_vals=None, is_positron=False, ecut=0.001):
++                          S_rad_vals=None, is_positron=False,
++                          ecut=DEFAULT_TRANSPORT_ECUT_MEV):
+     """
+     Shared continuous-slowing-down transport for electrons and positrons.
+     Energies are in MeV, lengths in cm, and stopping powers in MeV/cm.
+@@ -658,5 +666,3 @@
+         raise AssertionError(
+             f"lepton ledger closure failed: {_closure:.3e} MeV")
+     return total_local, secondaries, ledger
+-
+-
+--- a/beamweaver/policy.py
++++ b/beamweaver/policy.py
+@@ -14,6 +14,11 @@
+     BW4_FACTOR_HEADS,
+     BW4_NORM_LOGE_SPEC,
+     BW4_PHI_EPS,
++    BW_VERSION,
++    CURRENT_POLICY_SCHEMA,
++    N_PROCESSES,
++    N_SHELLS,
++    PROCESS_INDEX,
+     PROCESS_NAMES,
+     SHELL_NAMES,
+     MEC2_MEV,
+@@ -84,7 +89,7 @@
+                     else ConditionalCategoricalHead(ind, outd))
+             setattr(self, attr, head)
+         self.ready = {f: False for f in BW4_FACTOR_HEADS}
+-        self.n_interactions = 4
++        self.n_interactions = N_PROCESSES
+         self.reference_sampler_calls = 0
+         self.meta = {}
+ 
+@@ -122,7 +127,7 @@
+         xE = self._energy_features(E)
+         pl = self.process_head(xE)[0].clone()
+         if E <= 2.0 * MEC2_MEV:      # boundary itself has zero phase space
+-            pl[3] = float("-inf")
++            pl[PROCESS_INDEX["pair"]] = float("-inf")
+         D = self._draw_cat(pl, gen)
+         if audit is not None:
+             # The event logger owns total and per-process event tallies.
+@@ -132,7 +137,7 @@
+         shell = -1
+         theta_deg = phi_deg = 0.0
+         pair = None
+-        if D == 0:                                   # Rayleigh — s, φ
++        if D == PROCESS_INDEX["rayleigh"]:            # Rayleigh — s, φ
+             self._require("ray_q2", "ray_phi")
+             k = self._draw_cat(self.rayleigh_q2_head(xE)[0], gen)
+             sv = self._sample_bin_value("ray_q2", k, gen)   # s=ln(q2/q2max): no mask
+@@ -148,7 +153,7 @@
+                     audit.rayleigh_phi_rows += 1
+                 else:
+                     audit.rayleigh_phi_skipped += 1
+-        elif D == 1:                                 # Compton — u, φ
++        elif D == PROCESS_INDEX["compton"]:           # Compton — u, φ
+             self._require("comp_u", "comp_phi")
+             k = self._draw_cat(self.compton_u_head(xE)[0], gen)
+             u = self._sample_bin_value("comp_u", k, gen)
+@@ -164,10 +169,10 @@
+                     audit.compton_phi_rows += 1
+                 else:
+                     audit.compton_phi_skipped += 1
+-        elif D == 2:                                 # photo — H, ν, φ
++        elif D == PROCESS_INDEX["photo"]:             # photo — H, ν, φ
+             self._require("shell", "photo_nu", "photo_phi")
+             shell = self._draw_cat(self.shell_head(xE)[0], gen)
+-            soh = torch.zeros(1, 5, device=self._dev()); soh[0, shell] = 1.0
++            soh = torch.zeros(1, N_SHELLS, device=self._dev()); soh[0, shell] = 1.0
+             k = self._draw_cat(self.photo_nu_head(
+                 torch.cat([xE, soh], dim=1))[0], gen)
+             nu = self._sample_bin_value("photo_nu", k, gen)
+@@ -246,7 +251,8 @@
+             pl = self.process_head(xE)
+             pl = pl.masked_fill(torch.tensor(E <= thr, device=dev)
+                                 .unsqueeze(1)
+-                                & (torch.arange(4, device=dev) == 3), 
++                                & (torch.arange(N_PROCESSES, device=dev)
++                                   == PROCESS_INDEX["pair"]),
+                                 float("-inf"))
+             Dn = _mnom(pl).cpu().numpy()
+             out["process"] = Dn.astype(np.int64)
+@@ -266,7 +272,7 @@
+                             getattr(audit, skip_attr)
+                             + int((~sin_ok).sum()))
+ 
+-            idx = np.nonzero(Dn == 0)[0]                 # ── Rayleigh
++            idx = np.nonzero(Dn == PROCESS_INDEX["rayleigh"])[0]
+             if len(idx):
+                 self._require("ray_q2", "ray_phi")
+                 e = self.edge_arrays["ray_q2"]; a, b = e[:-1], e[1:]
+@@ -282,7 +288,7 @@
+                 _phi_counts(np.sqrt(1 - cth**2) > BW4_PHI_EPS,
+                             "rayleigh_phi_rows", "rayleigh_phi_skipped")
+ 
+-            idx = np.nonzero(Dn == 1)[0]                 # ── Compton
++            idx = np.nonzero(Dn == PROCESS_INDEX["compton"])[0]
+             if len(idx):
+                 self._require("comp_u", "comp_phi")
+                 e = self.edge_arrays["comp_u"]; a, b = e[:-1], e[1:]
+@@ -299,11 +305,11 @@
+                 _phi_counts(np.sqrt(1 - cth**2) > BW4_PHI_EPS,
+                             "compton_phi_rows", "compton_phi_skipped")
+ 
+-            idx = np.nonzero(Dn == 2)[0]                 # ── photoelectric
++            idx = np.nonzero(Dn == PROCESS_INDEX["photo"])[0]
+             if len(idx):
+                 self._require("shell", "photo_nu", "photo_phi")
+                 sh = _mnom(self.shell_head(xE[idx]))
+-                soh = torch.nn.functional.one_hot(sh, 5).float()
++                soh = torch.nn.functional.one_hot(sh, N_SHELLS).float()
+                 out["shell"][idx] = sh.cpu().numpy()
+                 e = self.edge_arrays["photo_nu"]; a, b = e[:-1], e[1:]
+                 k = _mnom(self.photo_nu_head(
+@@ -320,7 +326,7 @@
+                 _phi_counts(np.sqrt(1 - cth**2) > BW4_PHI_EPS,
+                             "photo_phi_rows", "photo_phi_skipped")
+ 
+-            idx = np.nonzero(Dn == 3)[0]                 # ── pair
++            idx = np.nonzero(Dn == PROCESS_INDEX["pair"])[0]
+             if len(idx):
+                 self._require("pair_frac", "pair_e_polar", "pair_e_phi",
+                               "pair_p_polar", "pair_p_phi")
+@@ -361,7 +367,7 @@
+                     "pair_p_polar", "pair_p_phi"))
+ 
+     def save_policy(self, path, extra=None):
+-        ck = {"policy_schema": "beam_weaver_generative_policy_v040",
++        ck = {"policy_schema": CURRENT_POLICY_SCHEMA,
+               "architecture": "GenerativeTransportPolicy",
+               "state_dict": self.state_dict(),
+               "edges": {k: v for k, v in self.edge_arrays.items()},
+@@ -378,8 +384,8 @@
+     @classmethod
+     def load_policy(cls, path, device="cpu"):
+         ck = torch.load(path, map_location=device, weights_only=False)
+-        assert ck.get("policy_schema") == \
+-            "beam_weaver_generative_policy_v040", "not a v0.4.0 policy"
++        assert ck.get("policy_schema") == CURRENT_POLICY_SCHEMA, \
++            f"not a v{BW_VERSION} policy"
+         pol = cls(ck["edges"])
+         pol.load_state_dict(ck["state_dict"])
+         pol.ready = dict(ck["ready"])
+--- a/beamweaver/training.py
++++ b/beamweaver/training.py
+@@ -10,7 +10,10 @@
+ import numpy as np
+ import torch
+ 
+-from .constants import BW4_FACTOR_HEADS, BW4_TRAIN_SEQUENCE, MEC2_MEV
++from .constants import (
++    BW4_FACTOR_HEADS, BW4_TRAIN_SEQUENCE, MEC2_MEV,
++    DEFAULT_TRAIN_BATCH_SIZE, N_PROCESSES, N_SHELLS, PROCESS_INDEX,
++)
+ from .coordinates import norm_logE
+ from .dataset import load_dataset_edges
+ from .policy import GenerativeTransportPolicy, UnconditionalCategoricalHead
+@@ -76,7 +79,9 @@
+             c = z[k].astype(np.float64); T = c / c.sum()
+             rows_X.append([norm_logE(E)])
+             rows_T.append(T)
+-            rows_M.append([True, True, True, E > thr])
++            mask = [True] * N_PROCESSES
++            mask[PROCESS_INDEX["pair"]] = E > thr
++            rows_M.append(mask)
+     elif factor == "shell":
+         for k in sorted(k for k in z.files
+                         if k.startswith(f"{role}|shell|")):
+@@ -99,7 +104,7 @@
+             if factor == "photo_nu":
+                 sh = int(k.split("|H")[1].split("|")[0])
+                 xrow = [norm_logE(E)] + [1.0 * (j == sh)
+-                                             for j in range(5)]
++                                             for j in range(N_SHELLS)]
+             rows_X.append(xrow)
+     elif factor in ("ray_phi", "comp_phi", "photo_phi"):
+         fac = {"ray_phi": "ray", "comp_phi": "comp",
+@@ -113,7 +118,7 @@
+             rows_T.append(h / max(h.sum(), 1))
+             if factor == "photo_phi":
+                 sh = int(k.split("|H")[1].split("|")[0])
+-                rows_X.append([1.0 * (j == sh) for j in range(5)])
++                rows_X.append([1.0 * (j == sh) for j in range(N_SHELLS)])
+             else:
+                 rows_X.append([])
+     X = (torch.tensor(np.array(rows_X, dtype=np.float32))
+@@ -124,7 +129,8 @@
+ 
+ 
+ def train_factor(policy, factor, ds_path, epochs=None, lr=None,
+-                     patience=None, batch=8192, device="cpu", verbose=True,
++                     patience=None, batch=DEFAULT_TRAIN_BATCH_SIZE,
++                     device="cpu", verbose=True,
+                      run_dir="."):
+     """Train one factor with empirical cross-entropy and validation stopping.
+ 
+--- a/beamweaver/transport.py
++++ b/beamweaver/transport.py
+@@ -2,9 +2,22 @@
+ 
+ # Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
+ 
+-from .constants import EVAL_MAX_STEPS
++from .constants import (
++    DEFAULT_TRANSPORT_ECUT_MEV,
++    DEFAULT_INFERENCE_BATCH_SIZE,
++    SOURCE_FIELD_WIDTH_CM,
++    SOURCE_FIELD_HALF_WIDTH_CM,
++    ATTENUATION_FLOOR_CM_INV,
++    FREE_PATH_RANDOM_FLOOR,
++    LEARNED_RECOIL_MOMENTUM_FLOOR_MEV_C,
++    HISTORY_CLOSURE_ATOL_MEV,
++    ELECTRON_STOPPING_POWER_TABLE,
++    PERFORMANCE_TIME_FLOOR_S,
++)
++
++from .constants import TRANSPORT_MAX_STEPS
+ from .constants import MEC2_MEV
+-from .constants import PHOTO_SHELL_BINDINGS
++from .constants import PHOTO_SHELL_BINDINGS_MEV
+ from .constants import PROCESS_NAMES
+ from .materials import WaterPhotonData
+ from .constants import SHELL_NAMES
+@@ -20,8 +33,8 @@
+ from .physics import transport_lepton_csda
+ 
+ 
+-def run_reference_transport(n_photons, data: WaterPhotonData, env, max_steps=100000,
+-                  ecut=0.001, verbose=False):
++def run_reference_transport(n_photons, data: WaterPhotonData, env, max_steps=TRANSPORT_MAX_STEPS,
++                  ecut=DEFAULT_TRANSPORT_ECUT_MEV, verbose=False):
+     """Reference Monte Carlo transport with a photon bank for each history.
+ 
+     The closed energy ledger records deposits, escaped and discarded
+@@ -37,13 +50,13 @@
+     tracks = []
+     all_secondaries = []
+     mc_interactions = []
+-    stopping_Egrid, stopping_S_col, stopping_S_rad = load_stopping_power("ElectronStoppingPower.csv")
++    stopping_Egrid, stopping_S_col, stopping_S_rad = load_stopping_power(ELECTRON_STOPPING_POWER_TABLE)
+     env.reset()
+     env.dose_tally[:] = 0.0
+ 
+     for hist in range(n_photons):
+-        px0 = (random.random() * 10.0) - 5.0
+-        py0 = (random.random() * 10.0) - 5.0
++        px0 = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM
++        py0 = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM
+         # bank entry: (E, dir, pos, tag, generation, record-or-None)
+         photon_bank = [(env.fixed_energy, (0.0, 0.0, 1.0),
+                         (px0, py0, 0.0), "primary", 0, None)]
+@@ -89,7 +102,7 @@
+             while alive and steps < max_steps and env.E > ecut:
+                 steps += 1
+                 mu = data.mu_total(env.E)
+-                if mu < 1e-30:
++                if mu < ATTENUATION_FLOOR_CM_INV:
+                     led["gamma_escaped"] += env.E
+                     seg_fate = "escaped"; env.E = 0.0
+                     alive = False
+@@ -203,7 +216,7 @@
+                  + led["subcutoff_dropped"] + led["binding_dropped"]
+                  + led["pair_restmass"] + led["truncated"])
+         led["closure_err"] = abs(led["E_in"] + led["annih_created"] - sinks)
+-        if led["closure_err"] > 2e-6:
++        if led["closure_err"] > HISTORY_CLOSURE_ATOL_MEV:
+             raise AssertionError(
+                 f"MC history {hist} energy closure failed: "
+                 f"{led['closure_err']:.3e} MeV")
+@@ -230,7 +243,7 @@
+ 
+ 
+ def run_learned_transport(policy, data, env, n_photons, E0=1.0,
+-                            max_steps=EVAL_MAX_STEPS, ecut=0.001,
++                            max_steps=TRANSPORT_MAX_STEPS, ecut=DEFAULT_TRANSPORT_ECUT_MEV,
+                             exec_logger=None, audit=None, device="cpu",
+                             verbose=False, generator=None):
+     """Transport photons using generated collision events and shared CSDA.
+@@ -247,15 +260,15 @@
+             f"has no trained pair heads. Load a trained current checkpoint "
+             f"before above-threshold evaluation.")
+     stopping_Egrid, stopping_S_col, stopping_S_rad = \
+-        load_stopping_power("ElectronStoppingPower.csv")
++        load_stopping_power(ELECTRON_STOPPING_POWER_TABLE)
+     tracks, all_secs, interactions = [], [], []
+     dose = np.zeros_like(np.asarray(env.dose_tally, dtype=float))
+     audit = exec_logger.audit if exec_logger is not None else audit
+     eid = 0
+-    bind = {k: v * 1e-6 for k, v in PHOTO_SHELL_BINDINGS.items()}
++    bind = dict(PHOTO_SHELL_BINDINGS_MEV)
+     for pid in range(n_photons):
+-        x0 = (random.random() * 10.0) - 5.0          # identical source model
+-        y0 = (random.random() * 10.0) - 5.0
++        x0 = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM          # identical source model
++        y0 = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM
+         # bank entry: (E, dir, pos, tag, generation, record-or-None)
+         photon_bank = [(E0, (0.0, 0.0, 1.0), (x0, y0, 0.0), "primary", 0, None)]
+         step = 0
+@@ -291,13 +304,13 @@
+ 
+             while alive and step < max_steps and E > ecut:
+                 mu = data.mu_total(E)
+-                if mu < 1e-30:
++                if mu < ATTENUATION_FLOOR_CM_INV:
+                     led["gamma_escaped"] += E
+                     if not primary_terminated and gen == 0:
+                         fate = "escaped"; E_esc = E; primary_terminated = True
+                     seg_fate = "escaped"; E = 0.0; alive = False
+                     break
+-                fp = -math.log(max(random.random(), 1e-300)) / mu
++                fp = -math.log(max(random.random(), FREE_PATH_RANDOM_FLOOR)) / mu
+                 nx, ny, nz = x + fp * u, y + fp * v, z + fp * w
+                 if not (env.xmin <= nx <= env.xmax and env.ymin <= ny <= env.ymax
+                         and env.zmin <= nz <= env.zmax):
+@@ -318,7 +331,7 @@
+                     new_dir = rotate_direction(inc_dir, th_r, ph_r)
+                     pe = inc_dir * E - new_dir * E_out
+                     nrm = np.linalg.norm(pe)
+-                    e_dir = pe / nrm if nrm > 1e-12 else -new_dir
++                    e_dir = pe / nrm if nrm > LEARNED_RECOIL_MOMENTUM_FLOOR_MEV_C else -new_dir
+                     E_e = E - E_out
+                     secs = [("electron", E_e, e_dir, "compton_e")]
+                     rec_angle = ev.theta_deg
+@@ -450,7 +463,7 @@
+                  + led["subcutoff_dropped"] + led["binding_dropped"]
+                  + led["pair_restmass"] + led["truncated"])
+         led["closure_err"] = abs(led["E_in"] + led["annih_created"] - sinks)
+-        if led["closure_err"] > 2e-6:
++        if led["closure_err"] > HISTORY_CLOSURE_ATOL_MEV:
+             raise AssertionError(
+                 f"agent history {pid} energy closure failed: "
+                 f"{led['closure_err']:.3e} MeV")
+@@ -485,8 +498,8 @@
+ 
+     def __init__(self, pid, E0, ctx):
+         self.pid, self.ctx = pid, ctx
+-        x0 = (random.random() * 10.0) - 5.0          # identical source model
+-        y0 = (random.random() * 10.0) - 5.0
++        x0 = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM          # identical source model
++        y0 = (random.random() * SOURCE_FIELD_WIDTH_CM) - SOURCE_FIELD_HALF_WIDTH_CM
+         self.bank = [(E0, (0.0, 0.0, 1.0), (x0, y0, 0.0), "primary", 0, None)]
+         self.step = 0
+         self.sx, self.sy, self.sz = [], [], []
+@@ -550,7 +563,7 @@
+                 self._close_segment(self.seg_fate)
+                 continue
+             mu = data.mu_total(self.E)
+-            if mu < 1e-30:
++            if mu < ATTENUATION_FLOOR_CM_INV:
+                 self.led["gamma_escaped"] += self.E
+                 if not self.primary_terminated and self.gen == 0:
+                     self.fate = "escaped"; self.E_esc = self.E
+@@ -558,7 +571,7 @@
+                 self.seg_fate = "escaped"; self.E = 0.0
+                 self._close_segment(self.seg_fate)
+                 continue
+-            fp = -math.log(max(random.random(), 1e-300)) / mu
++            fp = -math.log(max(random.random(), FREE_PATH_RANDOM_FLOOR)) / mu
+             nx = self.x + fp * self.u
+             ny = self.y + fp * self.v
+             nz = self.z + fp * self.w
+@@ -596,7 +609,7 @@
+             new_dir = rotate_direction(inc_dir, th_r, ph_r)
+             pe = inc_dir * E - new_dir * E_out
+             nrm = np.linalg.norm(pe)
+-            e_dir = pe / nrm if nrm > 1e-12 else -new_dir
++            e_dir = pe / nrm if nrm > LEARNED_RECOIL_MOMENTUM_FLOOR_MEV_C else -new_dir
+             E_e = E - E_out
+             secs = [("electron", E_e, e_dir, "compton_e")]
+             rec_angle = theta_deg
+@@ -720,7 +733,7 @@
+                  + led["subcutoff_dropped"] + led["binding_dropped"]
+                  + led["pair_restmass"] + led["truncated"])
+         led["closure_err"] = abs(led["E_in"] + led["annih_created"] - sinks)
+-        if led["closure_err"] > 2e-6:
++        if led["closure_err"] > HISTORY_CLOSURE_ATOL_MEV:
+             raise AssertionError(
+                 f"agent history {self.pid} energy closure failed: "
+                 f"{led['closure_err']:.3e} MeV")
+@@ -733,9 +746,9 @@
+ 
+ 
+ def run_learned_transport_batched(policy, data, env, n_photons, E0=1.0,
+-                                    max_steps=EVAL_MAX_STEPS, ecut=0.001,
++                                    max_steps=TRANSPORT_MAX_STEPS, ecut=DEFAULT_TRANSPORT_ECUT_MEV,
+                                     audit=None,
+-                                    device="cpu", inference_batch_size=256,
++                                    device="cpu", inference_batch_size=DEFAULT_INFERENCE_BATCH_SIZE,
+                                     generator=None, verbose=False):
+     """Pool independent photon histories for batched event generation.
+ 
+@@ -754,14 +767,14 @@
+             f"E0={E0} MeV is above the pair threshold but the loaded kernel "
+             f"has no trained pair heads.")
+     stop_E, stop_col, stop_rad = \
+-        load_stopping_power("ElectronStoppingPower.csv")
++        load_stopping_power(ELECTRON_STOPPING_POWER_TABLE)
+     tracks, all_secs, interactions = [], [], []
+     dose = np.zeros_like(np.asarray(env.dose_tally, dtype=float))
+     ctx = {"env": env, "data": data, "ecut": ecut, "max_steps": max_steps,
+            "dose": dose, "interactions": interactions, "all_secs": all_secs,
+            "audit": audit, "stop_E": stop_E, "stop_col": stop_col,
+            "stop_rad": stop_rad,
+-           "bind": {k: vv * 1e-6 for k, vv in PHOTO_SHELL_BINDINGS.items()}}
++           "bind": dict(PHOTO_SHELL_BINDINGS_MEV)}
+     _is_cuda = str(device).startswith("cuda")
+     if _is_cuda:
+         import torch
+@@ -817,7 +830,7 @@
+         perf["t_apply"] += time.time() - t0
+     perf["t_total"] = time.time() - t_total0
+     perf["fill_mean"] = perf["rows"] / max(perf["waves"], 1)
+-    perf["hist_s"] = n_photons / max(perf["t_total"], 1e-9)
++    perf["hist_s"] = n_photons / max(perf["t_total"], PERFORMANCE_TIME_FLOOR_S)
+     if _is_cuda:
+         perf["peak_gpu_mem_MB"] = float(
+             torch.cuda.max_memory_allocated() / 1e6)
+--- a/beamweaver/validation.py
++++ b/beamweaver/validation.py
+@@ -12,7 +12,10 @@
+ import numpy as np
+ 
+ from .constants import (
+-    BW_VERSION, MEC2_MEV, PHOTO_SHELL_BINDINGS, _PAIR_R_EQ, _PAIR_Z_EQ, mec2,
++    BW_VERSION, MEC2_MEV, PHOTO_SHELL_BINDINGS_MEV, _PAIR_R_EQ, _PAIR_Z_EQ, mec2,
++    DEFAULT_FACTOR_VALIDATION_SAMPLES, DEFAULT_REFERENCE_VALIDATION_SAMPLES,
++    KEV_PER_MEV, N_SHELLS, PROCESS_INDEX, SHELL_INDEX,
++    REFERENCE_POLAR_GRID_POINTS,
+ )
+ from .coordinates import norm_logE
+ from .dataset import (
+@@ -34,7 +37,7 @@
+     """
+     alpha = E_in / mec2
+ 
+-    angles_deg = np.linspace(0, 180, 180)
++    angles_deg = np.linspace(0, 180, REFERENCE_POLAR_GRID_POINTS)
+     angles_rad = np.radians(angles_deg)
+     c_grid = np.cos(angles_rad)
+     eps_g  = 1.0 / (1.0 + alpha * (1.0 - c_grid))          # KN-linked
+@@ -56,8 +59,8 @@
+     E_in is in MeV; F(q) is the same material form factor used by the
+     reference Rayleigh sampler. This grid includes 0 and 180 degrees.
+     """
+-    k     = (E_in*1e3) / data.HC_KEV_A
+-    angles_deg = np.linspace(0, 180, 180)
++    k     = (E_in*KEV_PER_MEV) / data.HC_KEV_A
++    angles_deg = np.linspace(0, 180, REFERENCE_POLAR_GRID_POINTS)
+     angles_rad = np.radians(angles_deg)
+     cos_values = np.cos(angles_rad)
+     dist = np.zeros_like(angles_deg)
+@@ -80,9 +83,9 @@
+     K shells use the shared Sauter shape; L shells are isotropic in
+     solid angle. E_in and derived electron kinetic energy are in MeV.
+     """
+-    angles_deg = np.linspace(0, 180, 180)
++    angles_deg = np.linspace(0, 180, REFERENCE_POLAR_GRID_POINTS)
+     angles_rad = np.radians(angles_deg)
+-    dist = np.ones(180)
++    dist = np.ones(REFERENCE_POLAR_GRID_POINTS)
+ 
+     # Isotropic solid-angle sampling gives a sin(theta) polar density.
+     if shell in ('O_L1', 'O_L2', 'O_L3'):
+@@ -93,10 +96,10 @@
+             dist = dist / np.sum(dist)
+         return dist
+ 
+-    Eb_MeV = PHOTO_SHELL_BINDINGS[shell] * 1e-6
++    Eb_MeV = PHOTO_SHELL_BINDINGS_MEV[shell]
+     T_MeV  = E_in - Eb_MeV                # electron kinetic energy, MeV
+     if T_MeV <= 0.0:
+-        return np.zeros(180)         # photon below binding energy
++        return np.zeros(REFERENCE_POLAR_GRID_POINTS)  # photon below binding energy
+ 
+     gamma = 1.0 + T_MeV / mec2
+     beta  = math.sqrt(T_MeV * (T_MeV + 2.0 * mec2)) / (T_MeV + mec2)
+@@ -117,7 +120,7 @@
+     and its near-threshold fallback retain the reference implementation.
+     """
+     if E_in < 2.0 * mec2:
+-        return np.zeros(180)
++        return np.zeros(REFERENCE_POLAR_GRID_POINTS)
+     kappa = E_in / mec2
+     inv_k = 1.0 / kappa
+     g0 = (4.0 * math.log(_PAIR_R_EQ) - 4.0 * _pair_fC(_PAIR_Z_EQ)
+@@ -139,7 +142,7 @@
+     beta = np.sqrt(T * (T + 2.0 * mec2)) / (T + mec2)        # β(ε)
+     one_m_b2 = 1.0 - beta ** 2
+ 
+-    angles_deg = np.linspace(0, 180, 180)
++    angles_deg = np.linspace(0, 180, REFERENCE_POLAR_GRID_POINTS)
+     angles_rad = np.radians(angles_deg)
+     mu = np.cos(angles_rad)[:, None]                          # (180, 1)
+     dens = (pe[None, :] * one_m_b2[None, :]
+@@ -161,7 +164,7 @@
+         if head == "process":
+             lg = policy.process_head(xE)[0].clone()
+             if E <= 2.0 * MEC2_MEV:
+-                lg[3] = float("-inf")
++                lg[PROCESS_INDEX["pair"]] = float("-inf")
+             return torch.softmax(lg, -1).cpu().numpy(), None
+         if head == "shell":
+             return torch.softmax(policy.shell_head(xE)[0],
+@@ -175,7 +178,7 @@
+                                  -1).cpu().numpy(), \
+                 policy.edge_arrays["comp_u"]
+         if head == "photo_nu":
+-            soh = torch.zeros(1, 5, device=dev); soh[0, sh] = 1.0
++            soh = torch.zeros(1, N_SHELLS, device=dev); soh[0, sh] = 1.0
+             lg = policy.photo_nu_head(torch.cat([xE, soh], 1))[0]
+             return torch.softmax(lg, -1).cpu().numpy(), \
+                 policy.edge_arrays["photo_nu"]
+@@ -189,7 +192,7 @@
+             return torch.softmax(hd(1)[0], -1).cpu().numpy(), \
+                 policy.edge_arrays["phi"]
+         if head == "photo_phi":
+-            soh = torch.zeros(1, 5, device=dev); soh[0, sh] = 1.0
++            soh = torch.zeros(1, N_SHELLS, device=dev); soh[0, sh] = 1.0
+             return torch.softmax(policy.photo_phi_head(soh)[0],
+                                  -1).cpu().numpy(), \
+                 policy.edge_arrays["phi"]
+@@ -216,7 +219,7 @@
+     return a + rng.random(n) * (b - a)
+ 
+ 
+-def validate_policy(policy, data, energies=None, M=8192,
++def validate_policy(policy, data, energies=None, M=DEFAULT_FACTOR_VALIDATION_SAMPLES,
+                          out_json="v040_local_validation_report.json",
+                          figures=True, verbose=True, output_dir=None):
+     """Compare every learned head with independent local MC samples.
+@@ -300,7 +303,7 @@
+         for E in energies:
+             if pairlike and E <= thr:
+                 continue
+-            shells = range(5) if head in ("photo_nu", "photo_phi") \
++            shells = range(N_SHELLS) if head in ("photo_nu", "photo_phi") \
+                 else [None]
+             for sh in shells:
+                 if head in ("process", "shell"):
+@@ -322,7 +325,7 @@
+                     p2 = _hist(g2[fld], e)
+                     rows.append(_row(head, E, sh, q, p1, p2,
+                                      x_mc=g1[fld], edges=e))
+-                    if sh in (None, 1) and E in (0.05, 1.05, 5.0):
++                    if sh in (None, SHELL_INDEX["O_K"]) and E in (0.05, 1.05, 5.0):
+                         _fig(head, E, sh, e, p1, q)
+                 elif head in ("ray_phi", "comp_phi", "photo_phi"):
+                     fac = {"ray_phi": "ray", "comp_phi": "comp",
+@@ -385,7 +388,8 @@
+     return rep
+ 
+ 
+-def validate_reference_samplers(data, n_samples=100_000, ks_gate=0.03):
++def validate_reference_samplers(data, n_samples=DEFAULT_REFERENCE_VALIDATION_SAMPLES,
++                               ks_gate=0.03):
+     """Explicit reference-sampler check against angular target distributions.
+ 
+     This is an optional validation operation, not a startup or training
+@@ -423,7 +427,7 @@
+         tdist = rayleigh_angular_distribution(E, data)
+         k = _ks_hist_vs_target(th, tdist)
+         st = "OK " if k < ks_gate else "FAIL"
+-        print(f"  [rayleigh] E={E*1e3:6.1f} keV  KS={k:.4f}  {st}")
++        print(f"  [rayleigh] E={E*KEV_PER_MEV:6.1f} keV  KS={k:.4f}  {st}")
+         if k >= ks_gate:
+             failures.append(f"rayleigh @ {E} MeV KS={k:.4f}")
+ 
+@@ -435,7 +439,7 @@
+         tdist = compton_angular_distribution(E, spl)
+         k = _ks_hist_vs_target(th, tdist)
+         st = "OK " if k < ks_gate else "FAIL"
+-        print(f"  [compton ] E={E*1e3:6.1f} keV  KS={k:.4f}  {st}")
++        print(f"  [compton ] E={E*KEV_PER_MEV:6.1f} keV  KS={k:.4f}  {st}")
+         if k >= ks_gate:
+             failures.append(f"compton @ {E} MeV KS={k:.4f}")
+ 
+@@ -445,8 +449,8 @@
+         def __init__(self, idx): self.idx = idx
+         def sample_photo_shell_index(self, E): return self.idx
+     for shell_idx, shell_name, energies in (
+-            (1, "O_K", (0.0011, 0.005, 0.020, 0.100, 0.500)),
+-            (2, "O_L1", (0.002,))):
++            (SHELL_INDEX["O_K"], "O_K", (0.0011, 0.005, 0.020, 0.100, 0.500)),
++            (SHELL_INDEX["O_L1"], "O_L1", (0.002,))):
+         stub = _ForceShell(shell_idx)
+         for E in energies:
+             th = []
+@@ -457,7 +461,7 @@
+             tdist = photo_angular_distribution(E, shell=shell_name)
+             k = _ks_hist_vs_target(th, tdist)
+             st = "OK " if k < ks_gate else "FAIL"
+-            print(f"  [photo:{shell_name:4s}] E={E*1e3:6.1f} keV  KS={k:.4f}  {st}")
++            print(f"  [photo:{shell_name:4s}] E={E*KEV_PER_MEV:6.1f} keV  KS={k:.4f}  {st}")
+             if k >= ks_gate:
+                 failures.append(f"photo {shell_name} @ {E} MeV KS={k:.4f}")
+ 
+@@ -470,7 +474,7 @@
+         tdist = pair_angular_distribution(E)
+         k = _ks_hist_vs_target(th, tdist)
+         st = "OK " if k < ks_gate else "FAIL"
+-        print(f"  [pair    ] E={E*1e3:6.1f} keV  KS={k:.4f}  {st}")
++        print(f"  [pair    ] E={E*KEV_PER_MEV:6.1f} keV  KS={k:.4f}  {st}")
+         if k >= ks_gate:
+             failures.append(f"pair @ {E} MeV KS={k:.4f}")
+ 
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -4,7 +4,7 @@
+ 
+ [project]
+ name = "beamweaver"
+-version = "0.4.0"
++dynamic = ["version"]
+ description = "Factorized learned photon transport and a reference Monte Carlo engine"
+ requires-python = ">=3.10"
+ dependencies = ["numpy>=1.24", "pandas>=1.5", "matplotlib>=3.6"]
+@@ -20,3 +20,6 @@
+ [tool.setuptools.packages.find]
+ where = ["."]
+ include = ["beamweaver*"]
++
++[tool.setuptools.dynamic]
++version = {attr = "beamweaver.constants.BW_VERSION"}
+--- a/tests/reference_fixtures.py
++++ b/tests/reference_fixtures.py
+@@ -47,6 +47,7 @@
+ # Original-source labels are retained only inside this regression harness.
+ # The current package exposes the descriptive APIs on the right.
+ CURRENT_NAMES = {
++    'PHOTO_SHELL_BINDINGS': 'PHOTO_SHELL_BINDINGS_EV',
+     'ComptonSampler': 'ComptonEnergyTransferSampler',
+     'PenelopeLikeWaterData': 'WaterPhotonData',
+     'sample_rayleigh': 'sample_rayleigh_event',
+--- /dev/null
++++ b/tests/test_constants_consolidation.py
+@@ -0,0 +1,77 @@
++"""Contracts at the boundaries touched by consolidation of shared constants.
++
++Artificial tables exercise interfaces and reproducibility, not water accuracy.
++"""
++import math
++from pathlib import Path
++import random
++import tempfile
++import unittest
++
++import numpy as np
++
++from reference_fixtures import synthetic_tables
++from beamweaver.geometry import WaterPhantom, encode_policy_energy, encode_policy_energy_batch
++from beamweaver.materials import WaterPhotonData
++from beamweaver.physics import rotate_direction, sample_photoelectric_event_for_shell
++
++
++class ConstantsConsolidationTests(unittest.TestCase):
++    def test_local_frame_inverse_across_both_polar_branches(self):
++        env = WaterPhantom(None)
++        for uz in (-1., -.99990001, -.99989999, .3, .99989999, .99990001, 1.):
++            transverse = math.sqrt(1. - uz * uz)
++            incident = np.array([.6 * transverse, .8 * transverse, uz])
++            for phi in (.1, 1.7, 5.8):
++                scattered = rotate_direction(incident, .9, phi)
++                recovered = env._extract_local_phi(incident, scattered, .9)
++                error = (recovered - phi + math.pi) % (2. * math.pi) - math.pi
++                self.assertAlmostEqual(error, 0., places=12)
++                self.assertAlmostEqual(float(np.linalg.norm(scattered)), 1., places=14)
++
++    def test_reset_preserves_source_draws_and_caller_settings(self):
++        env = WaterPhantom(None, fixed_energy=.3, ecut=.002, energy_range=(.01, 5.))
++        expected_rng = random.Random(9182)
++        expected_position = tuple(expected_rng.random() * 10. - 5. for _ in range(2)) + (0.,)
++        env.reset(seed=9182)
++        self.assertEqual(env.initial_position, expected_position)
++        self.assertEqual(random.random(), expected_rng.random())
++        self.assertEqual((env.E, env.ecut, env.E_min, env.E_max), (.3, .002, .01, 5.))
++        self.assertEqual(env.dz, (env.zmax - env.zmin) / env.pdd_bins)
++
++    def test_scalar_and_batch_energy_encoding_preserve_distinct_rounding(self):
++        energies = np.r_[[-1., 0., .001, .01, 5., 10.], np.geomspace(.0001, 100., 20000)]
++        for energy_range in ((.001, 10.), (.01, 5.), (.0001, 20.)):
++            env = WaterPhantom(None, energy_range=energy_range)
++            lo, hi = map(math.log10, energy_range)
++            # Frozen observation-encoding contract; scalar and vector paths
++            # use their original different log10 implementations.
++            scalar = [10. ** float(np.float32(np.clip(math.log10(max(E, .001, env.E_min)), lo, hi)))
++                      for E in energies]
++            vector = 10. ** np.clip(np.log10(np.maximum(np.maximum(energies, .001), env.E_min)),
++                                   lo, hi).astype(np.float32).astype(np.float64)
++            np.testing.assert_array_equal([encode_policy_energy(E, env) for E in energies], scalar)
++            np.testing.assert_array_equal(encode_policy_energy_batch(energies, env), vector)
++
++    def test_shell_categories_keep_order_and_return_independent_vectors(self):
++        names = ['H_K', 'O_K', 'O_L1', 'O_L2', 'O_L3']
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory)
++            synthetic_tables(path)
++            data = WaterPhotonData(str(path / 'Final_cross_sections.csv'),
++                                   str(path / 'Rayleigh_cross_sections.csv'),
++                                   water_shell_csv=str(path / 'WaterPhotoShells.csv'),
++                                   coherent_ff_csv=str(path / 'water_fq.csv'))
++            for shell, name in enumerate(names):
++                first = sample_photoelectric_event_for_shell(1., [0., 0., 1.], data, shell)
++                second = sample_photoelectric_event_for_shell(1., [0., 0., 1.], data, shell)
++                expected = [int(i == shell) for i in range(5)]
++                self.assertEqual(first[4], expected)
++                self.assertEqual(second[4], expected)
++                self.assertEqual(first[2][0][3], 'photo_' + name)
++                first[4][shell] = 0
++                self.assertEqual(second[4], expected)
++
++
++if __name__ == '__main__':
++    unittest.main(verbosity=2)
