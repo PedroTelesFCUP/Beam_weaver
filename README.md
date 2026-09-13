@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18994134.svg)](https://doi.org/10.5281/zenodo.18994134)
 
-**Learned stochastic kernels for Monte Carlo photon transport.**
+**Beam Weaver is a learned-kernel Monte Carlo framework for photon transport in water.**
 
 ## Introduction
 
