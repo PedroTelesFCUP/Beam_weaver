@@ -22,9 +22,9 @@ After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic 
 
 ## Results
 
-The [ECMP results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** results: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. For each energy, five figures are presented: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
+[Results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** results: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. For each energy, five figures are presented: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
 
-![5 MeV depth-dose comparison from the corrected ECMP poster](results/figures/5MeV/pdd.png)
+![5 MeV depth-dose comparison](results/figures/5MeV/pdd.png)
 
 
 
