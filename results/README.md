@@ -1,4 +1,4 @@
-# ECMP results — all five photon energies
+# Results
 
 [Back to the project README](../README.md)
 
