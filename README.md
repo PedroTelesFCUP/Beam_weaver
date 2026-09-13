@@ -10,23 +10,21 @@ Beam Weaver began as a proof-of-concept neural network that could be taught how 
 
 After training, In its current form, Beam Weaver can successfully transport photons in a liquid water phantom with energies ranging from 1 keV to 10 MeV. Practically all stochastic quantities are inferred (interaction choice, photon shells in the case of photoelectric events, scattering polar and azimuth photon and electron angles, shared kinetic energy in pair production), totalling 13 inferred quantities, each with its own head, while exponential mean free path sampling and electron transport still use Beam Spinner’s classical Monte Carlo approach.
 
-The workflow is **generate data → train → simulate and compare**. The current implementation is version **0.4.0**.
-
-## Results
-
-The [ECMP results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** campaign: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. Each energy has the same five figure categories as the corrected poster: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
-
-![5 MeV depth-dose comparison from the corrected ECMP poster](results/figures/5MeV/pdd.png)
-
-The five original 5 MeV poster plots are reused unchanged. Other energies use the same plotting conventions; panels whose secondary records are unavailable are labelled explicitly. The gallery includes numerical data, provenance and instructions for regenerating plots. These are the **saved poster-campaign results**, not a new simulation of this release; available run metadata retain their original `0.2.9e` version and checkpoint labels.
-
 ## Method
 
 Thirteen heads with disjoint parameters represent interaction selection, photoelectric shell selection, and the energy-sharing and angular variables of Rayleigh scattering, Compton scattering, photoelectric absorption and pair production. Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
 
-Training minimizes cross-entropy against reference samples or their empirical category distributions. The heads use photon energy and, where required, the selected shell or sampled lepton energy fraction. Training proceeds head by head, with validation-based stopping and restoration of the best weights.
+Training minimizes cross-entropy against reference samples or their empirical category distributions. The heads use photon energy and, where required, the selected shell or sampled electron/positron energy fraction. Training proceeds head by head, with validation-based stopping and restoration of the best weights when overfitting. The learned energy domain is **0.001–10 MeV**.
 
-During a shower, Beam Weaver supplies the collision variables. Free-flight distances still use tabulated attenuation coefficients, and explicit kinematics reconstruct the outgoing particles. Both learned and reference simulations use the same approximate electron/positron transport. The learned energy domain is **0.001–10 MeV**.
+## Results
+
+The [ECMP results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** results: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. For each energy, five figures are presented: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
+
+![5 MeV depth-dose comparison from the corrected ECMP poster](results/figures/5MeV/pdd.png)
+
+
+
+
 
 ## Installation
 
