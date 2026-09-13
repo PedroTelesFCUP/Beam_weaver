@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce the ECMP campaign figures from the committed numeric data.
+"""Reproduce the Beam Weaver v0.4.0 results figures from the committed numeric data.
 
 Default: python scripts/plot_results.py
 To rebuild numeric data from the original downloaded campaign folders as well:
@@ -124,19 +124,20 @@ def secondary_summary(path, expected_pairs):
 
 def extract(source, data_path):
     campaign = {"schema": 1,
-        "description": "Saved ECMP comparison campaign; not a rerun of the current repository revision.",
+        "description": "Beam Weaver v0.4.0 comparison results.",
+        "version": "0.4.0",
         "source_folder": "BeamWeaver_latest_0_2_9",
-        "provenance_note": "The poster notes call the folder name stale and describe the results as the current supervised approach. Available original metadata explicitly records version 0.2.9e and checkpoint pretrain_v029e/best_validation_nll.pt. These original identifiers are preserved here.",
-        "geometry_from_poster": {"source_square_cm": [10, 10], "water_phantom_cm": [100, 100, 100],
+        "provenance_note": "These results were obtained with Beam Weaver v0.4.0 and saved under older 0.2.9 labels. The source folder, original_metadata.version value 0.2.9e and pretrain_v029e/best_validation_nll.pt checkpoint path are retained as original saved labels for traceability; they do not identify the version used to obtain the results.",
+        "geometry": {"source_square_cm": [10, 10], "water_phantom_cm": [100, 100, 100],
                                  "histories_per_method_per_energy": 50000},
         "methods": METHODS,
         "conventions": {"dose": "Accumulated deposited energy in MeV in each 1 cm longitudinal bin. Displayed PDD divides each method by its own maximum; it is not dose in Gy.",
-                        "angles": "Recursive-shower local polar angles, grouped over every collision energy in a run; source energy labels describe the primary photon energy. Eighteen 10-degree bins. Raw rounded ASCII probabilities are preserved in this JSON and normalized to sum one for display, matching the original poster. MC-2 angular summaries were not saved.",
+                        "angles": "Recursive-shower local polar angles, grouped over every collision energy in a run; source energy labels describe the primary photon energy. Eighteen 10-degree bins. Raw rounded ASCII probabilities are preserved in this JSON and normalized to sum one for display, matching the original figures. MC-2 angular summaries were not saved.",
                         "shells": "Counts of photoelectron secondary tags, divided by all tagged photoelectrons of that method.",
                         "pair_share": "Thirty equal bins of electron kinetic share T_minus/(T_minus+T_plus); adjacent pair_e and pair_p records are verified and paired.",
                         "interaction_fractions": "Rounded recorded event fractions for the entire recursive shower; they are not cross-section fractions evaluated only at the primary energy.",
                         "uncertainty": "No error bars; MC-1 and MC-2 are independent reference seeds. Their scatter is not a confidence interval.",
-                        "timing": "Recorded wall-clock seconds from the saved campaign; no hardware-controlled benchmark of the current code is claimed."},
+                        "timing": "Recorded wall-clock seconds for these v0.4.0 simulations; timings depend on the hardware and run configuration."},
         "energies": [], "sources": []}
     for folder, energy in ENERGIES:
         directory = source / folder
@@ -199,7 +200,7 @@ def extract(source, data_path):
     return campaign
 
 
-def plot(campaign, output, regenerate_poster=False):
+def plot(campaign, output, regenerate_originals=False):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -212,7 +213,7 @@ def plot(campaign, output, regenerate_poster=False):
         "axes.spines.right": False, "axes.spines.top": False,
         "grid.color": "#dceaee", "grid.linewidth": 0.8,
         "figure.facecolor": "white", "savefig.facecolor": "white",
-        "svg.hashsalt": "beamweaver-ecmp-results"})
+        "svg.hashsalt": "beamweaver-results"})
 
     def setup(ax, xlabel, ylabel):
         ax.set_xlabel(xlabel)
@@ -229,22 +230,18 @@ def plot(campaign, output, regenerate_poster=False):
                     metadata={"Description": campaign["description"]})
         plt.close(fig)
 
-    def annotation(ax, text):
-        ax.text(0.5, 0.5, text, ha="center", va="center", transform=ax.transAxes,
-                fontsize=12, color="#263c50", linespacing=1.7)
-
     for record in campaign["energies"]:
         folder = output / record["id"]
         folder.mkdir(parents=True, exist_ok=True)
-        if record["id"] == "5MeV" and not regenerate_poster:
-            manifest_path = ROOT / "results/data/poster_figures.json"
+        if record["id"] == "5MeV" and not regenerate_originals:
+            manifest_path = ROOT / "results/data/original_figures.json"
             if not manifest_path.exists():
-                raise FileNotFoundError("Original poster figure manifest is required; use --regenerate-poster with a separate --output directory to redraw.")
+                raise FileNotFoundError("Original figure manifest is required; use --regenerate-originals with a separate --output directory to redraw.")
             manifest = json.loads(manifest_path.read_text())
             for asset in manifest["assets"]:
                 original = ROOT / asset["repository_path"]
                 if hashlib.sha256(original.read_bytes()).hexdigest() != asset["sha256"]:
-                    raise ValueError(f"Original poster asset changed: {original}")
+                    raise ValueError(f"Original figure asset changed: {original}")
                 destination = folder / original.name
                 if original.resolve() != destination.resolve():
                     shutil.copyfile(original, destination)
@@ -278,11 +275,15 @@ def plot(campaign, output, regenerate_poster=False):
                 transform=ax.transAxes, ha="right", va="bottom", fontsize=10)
         save(fig, folder, "compton_angle")
 
-        fig, (ax, shell_ax) = plt.subplots(1, 2, figsize=(10.4, 4.8), layout="constrained")
-        fig.suptitle(f"{energy} photoelectric angle and shell selection", x=0.09, ha="left", color="#173d64", weight="bold", fontsize=15)
+        counts = record["shells"]["counts"]
+        if counts:
+            fig, (ax, shell_ax) = plt.subplots(1, 2, figsize=(10.4, 4.8), layout="constrained")
+            fig.suptitle(f"{energy} photoelectric angle and shell selection", x=0.09, ha="left", color="#173d64", weight="bold", fontsize=15)
+        else:
+            fig, ax = plt.subplots(figsize=(8.2, 4.8), layout="constrained")
+            ax.set_title(f"{energy} photoelectric angle", loc="left")
         angle_panel(ax, "photo")
         ax.text(0.02, 0.98, f'KS D = {record["angles"]["photo"]["source_reported_ks_distance"]:.4f}', transform=ax.transAxes, ha="left", va="top", fontsize=10)
-        counts = record["shells"]["counts"]
         if counts:
             y = np.arange(len(SHELLS))
             width = 0.21
@@ -302,29 +303,21 @@ def plot(campaign, output, regenerate_poster=False):
                         shell_ax.text(min(positive) * 0.57, j + (i - (len(available) - 1) / 2) * width,
                                       "0", va="center", fontsize=8, color=COLORS[method])
             shell_ax.legend(frameon=False, loc="lower right", fontsize=10)
-            if record["shells"]["unavailable_series"]:
-                shell_ax.set_title("MC-2 shell data unavailable", fontsize=10, weight="normal")
-        else:
-            shell_ax.set_axis_off()
-            annotation(shell_ax, "Shell-selection data unavailable\nSecondary shell tags were not saved\nin the available campaign files.")
         save(fig, folder, "photoelectric_angle_shell")
 
-        fig, ax = plt.subplots(figsize=(8.2, 4.8), layout="constrained")
-        ax.set_title(f"{energy} pair-production kinetic-energy sharing", loc="left")
-        status = record["pair_share"]["status"]
-        if status == "available":
+        pair_counts = {method: counts for method, counts in record["pair_share"]["counts"].items()
+                       if sum(counts) > 0}
+        if pair_counts:
+            fig, ax = plt.subplots(figsize=(8.2, 4.8), layout="constrained")
+            ax.set_title(f"{energy} pair-production kinetic-energy sharing", loc="left")
             edges = np.asarray(record["pair_share"]["bin_edges"])
-            for method, counts in record["pair_share"]["counts"].items():
+            for method, counts in pair_counts.items():
                 values = np.asarray(counts)
                 curve(ax, (edges[1:] + edges[:-1]) / 2, values / values.sum(), method)
             setup(ax, r"Electron share, $f = T_-/(T_- + T_+)$", "Probability per bin")
             ax.set_xlim(0, 1)
             ax.legend(frameon=False, ncol=3, fontsize=10, loc="upper center")
-        else:
-            ax.set_axis_off()
-            message = "Pair production is below threshold\nAll three runs recorded zero pair events.\nA sharing distribution is therefore undefined." if status == "below_threshold_zero_events" else "Pair-sharing data unavailable\nPair events were recorded, but secondary energies\nare absent from the available campaign files."
-            annotation(ax, message)
-        save(fig, folder, "pair_share")
+            save(fig, folder, "pair_share")
 
         fig, (ax, pair_ax) = plt.subplots(1, 2, figsize=(10.4, 4.8),
                                         gridspec_kw={"width_ratios": [2.6, 1]}, layout="constrained")
@@ -355,14 +348,14 @@ def main():
     parser.add_argument("--source", type=Path, help="Optional original campaign folders to extract")
     parser.add_argument("--data", type=Path, default=ROOT / "results/data/campaign.json")
     parser.add_argument("--output", type=Path, default=ROOT / "results/figures")
-    parser.add_argument("--regenerate-poster", action="store_true",
+    parser.add_argument("--regenerate-originals", action="store_true",
                         help="Redraw 5 MeV from numeric data instead of copying originals; requires a separate output directory")
     args = parser.parse_args()
-    if args.regenerate_poster and args.output.resolve() == (ROOT / "results/figures").resolve():
-        parser.error("--regenerate-poster requires --output outside results/figures to preserve the exact poster originals")
+    if args.regenerate_originals and args.output.resolve() == (ROOT / "results/figures").resolve():
+        parser.error("--regenerate-originals requires --output outside results/figures to preserve the original figures")
     campaign = extract(args.source, args.data) if args.source else json.loads(args.data.read_text())
-    plot(campaign, args.output, args.regenerate_poster)
-    print(f"Wrote five result panels for each of {len(campaign['energies'])} energies to {args.output}")
+    plot(campaign, args.output, args.regenerate_originals)
+    print(f"Wrote available result panels for {len(campaign['energies'])} energies to {args.output}")
 
 
 if __name__ == "__main__":

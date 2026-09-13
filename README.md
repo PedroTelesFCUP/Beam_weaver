@@ -10,6 +10,39 @@ Beam Weaver began as a proof-of-concept neural network that could be taught how 
 
 After training, In its current form, Beam Weaver can successfully transport photons in a liquid water phantom with energies ranging from 1 keV to 10 MeV. Practically all stochastic quantities are inferred (interaction choice, photon shells in the case of photoelectric events, scattering polar and azimuth photon and electron angles, shared kinetic energy in pair production), totalling 13 inferred quantities, each with its own head, while exponential mean free path sampling and electron transport still use Beam Spinner’s classical Monte Carlo approach.
 
+## Mathematical framework
+
+### Factorized collision law
+
+$$
+\pi_{\Theta}(\mathbf{Z}_t\mid E_t)
+=\prod_{h=1}^{13}q_{\theta_h}(Z_{t,h}\mid X_{t,h})^{m_{t,h}},
+\qquad m_{t,h}\in\{0,1\},\qquad q^1=q,\ q^0=1
+$$
+
+At collision t, Beam Weaver constructs the probability of event Zₜ by multiplying the predicted probabilities inferred by the relevant heads for each quantity q. Relevant heads are activated by a binary mask mₜ,ₕ which makes each irrelevante head contribute 1 to the final value.
+
+t - collision   •   h - head index (1–13)   •   Eₜ - photon energy before collision   •   Zₜ - complete binned event   •   Zₜ,ₕ  - head-h bin
+
+Xₜ,ₕ - energy plus required earlier outcomes   •   q  - distribution predicted by head h   •   θₕ  - head-h parameters   •   mₜ,ₕ  - relevance switch   •   Θ  - all learned parameters
+
+### Masked cross-entropy training
+
+$$
+\mathcal{L}(\Theta)
+=\sum_{h=1}^{13}\sum_{g\in\mathcal{G}_h}
+H\!\left(\widehat{\mathbf{p}}_{g,h},\mathbf{q}_{\theta_h}(\cdot\mid X_{g,h})\right),
+\qquad H(\mathbf{p},\mathbf{q})
+=-\sum_{k=1}^{K_h}p_k\ln q_k
+=H(\mathbf{p})+D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q})
+$$
+
+Each active head learns Beam Spinner’s observed bin frequencies. Taking −log turns the event product into a sum; because the heads have disjoint parameters, each can be trained separately. For a fixed target, minimizing cross-entropy also minimizes KL divergence [1].
+
+ℒ -  total loss   •   𝒢ₕ - teaching targets for head h   •   g -  condition group or event   •   k  - output-bin index (Kₕ bins)
+
+p̂  - Beam Spinner frequencies (or one-hot target)   •   q - Beam Weaver probabilities   •   H(p,q) -  cross-entropy   •   H(p) - fixed target entropy   •   Dₖₗ - remaining mismatch
+
 ## Method
 
 Thirteen heads with disjoint parameters represent interaction selection, photoelectric shell selection, and the energy-sharing and angular variables of Rayleigh scattering, Compton scattering, photoelectric absorption and pair production. Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
@@ -18,11 +51,11 @@ Training minimizes cross-entropy against reference samples or their empirical ca
 
 ## Experiment
 
-After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic photon histories were generated within a 10x10 cm2 square and transported through a 100x100x100 cm3  water phantom at five different initial energies (0.1, 1, 2, 5, and 10 MeV). Two Beam Spinner runs were performed at different PRNG seeds, and one run using Beam Weaver alone. The idea was to demonstrate the fidelity of Beam Weaver’s transport capabilities. Beam Spinner and Beam Weaver’s runs shared the mean free path Simulator and the electron/positron condensed history transport. All other quantities were inferred by Beam Weaver with only prior knowledge of the energy and direction of the source particles, generating the rest recursively. Results presented here cover all five initial photon energies. Error bars are not shown for enhanced visuals.
+After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic photon histories were generated within a 10 × 10 cm² square and transported through a 100 × 100 × 100 cm³ water phantom at five different initial energies (0.1, 1, 2, 5, and 10 MeV). Two Beam Spinner runs were performed at different PRNG seeds, and one run using Beam Weaver alone. The idea was to demonstrate the fidelity of Beam Weaver’s transport capabilities. Beam Spinner and Beam Weaver’s runs shared the mean free path Simulator and the electron/positron condensed history transport. All other quantities were inferred by Beam Weaver with only prior knowledge of the energy and direction of the source particles, generating the rest recursively. Results presented here cover all five initial photon energies. Error bars are not shown for enhanced visuals.
 
 ## Results
 
-[Results gallery](results/README.md) presents the saved **0.1, 1, 2, 5 and 10 MeV** results: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. For each energy, five figures are presented: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
+[Results gallery](results/README.md) presents the **v0.4.0** results at **0.1, 1, 2, 5 and 10 MeV**: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. The figures present: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
 
 ![5 MeV depth-dose comparison](results/figures/5MeV/pdd.png)
 

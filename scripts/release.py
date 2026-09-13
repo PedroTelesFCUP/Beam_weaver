@@ -1,4 +1,4 @@
-"""Read-only preflight for the release workflow; never change tags or releases."""
+"""Plan publication or release-note updates without changing GitHub state."""
 
 import ast
 import json
@@ -55,8 +55,9 @@ def release_plan():
     notes = Path("docs/releases") / f"{tag}.md"
     if not notes.is_file():
         print(f"No {notes}; this commit does not request a release.")
-        return {"publish": "false"}
-    if not notes.read_text(encoding="utf-8").strip():
+        return {"publish": "false", "update_notes": "false"}
+    notes_text = notes.read_text(encoding="utf-8")
+    if not notes_text.strip():
         raise ValueError(f"Release notes are empty: {notes}")
 
     tested_sha = os.environ["TESTED_SHA"]
@@ -67,8 +68,14 @@ def release_plan():
     if existing is not None:
         if existing.get("draft"):
             raise ValueError(f"{tag} has an existing draft; inspect it before retrying publication")
-        print(f"{tag} is already published; leaving the release and its tag unchanged.")
-        return {"publish": "false"}
+        update_notes = existing.get("body", "") != notes_text
+        print(f"{tag} is already published; release-note update needed: {update_notes}.")
+        return {
+            "publish": "false",
+            "update_notes": "true" if update_notes else "false",
+            "tag": tag,
+            "notes": notes.as_posix(),
+        }
 
     reference = github_get(f"git/ref/tags/{tag}", missing_ok=True)
     if reference is not None:
@@ -82,7 +89,7 @@ def release_plan():
             raise ValueError(f"Existing {tag} does not point to the tested commit; refusing to move it")
 
     print(f"Ready to publish {tag} from tested commit {tested_sha}.")
-    return {"publish": "true", "tag": tag, "notes": notes.as_posix()}
+    return {"publish": "true", "update_notes": "false", "tag": tag, "notes": notes.as_posix()}
 
 
 if __name__ == "__main__":

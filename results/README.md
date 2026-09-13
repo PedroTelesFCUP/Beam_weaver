@@ -5,30 +5,16 @@
 
 
 
-## Figure coverage
-
-Every energy below has the same five figure slots. 
-
-| Initial energy | PDD | Compton polar angle | Photoelectric polar angle / shell selection | Pair kinetic-energy sharing | Interaction fractions |
-| --- | --- | --- | --- | --- | --- |
-| [0.1 MeV](#01-mev) | All three runs | MC1 + Beam Weaver | Angle: MC1 + Beam Weaver; shells: MC1 + Beam Weaver (MC2 unavailable) | No pair events; below threshold | All three runs |
-| [1 MeV](#1-mev) | All three runs | MC1 + Beam Weaver | Angle: MC1 + Beam Weaver; shells unavailable | No pair events; below threshold | All three runs |
-| [2 MeV](#2-mev) | All three runs | MC1 + Beam Weaver | Angle: MC1 + Beam Weaver; shells unavailable | Unavailable | All three runs |
-| [5 MeV](#5-mev) | All three runs | MC1 + Beam Weaver | Angle: MC1 + Beam Weaver; shells: all three runs | All three runs | All three runs |
-| [10 MeV](#10-mev) | All three runs | MC1 + Beam Weaver | Angle: MC1 + Beam Weaver; shells unavailable | Unavailable | All three runs |
-
-MC2 angular histograms were not saved at any energy, including the poster’s 5 MeV example. The 0.1 and 1 MeV pair panels explicitly show that pair production is below threshold; no artificial zero-valued probability distribution is drawn. Completing the other shell and pair-sharing panels requires the original secondary records for MC1, MC2 and Beam Weaver at 1, 2 and 10 MeV, plus MC2 at 0.1 MeV.
-
 ## Reading the plots
 
 - **Navy:** Beam Spinner MC1. **Blue:** independent MC2 (dashed where curves are used). **Orange:** Beam Weaver.
 - **PDD:** each deposited-energy profile is divided by its own maximum. The 100 bins are 1 cm deep. Raw arrays contain deposited energy in MeV, not absorbed dose in Gy.
-- **Angles:** probabilities in eighteen 10° bins, accumulated over collisions throughout each recursive shower. The energy label identifies the primary photon, not every individual collision energy. The saved ASCII probabilities are rounded and preserved in the numeric data; each displayed histogram is normalized to sum one, matching the poster. Reported KS statistics come from the saved summaries.
-- **Shell selection:** fractions of recorded photoelectron tags in H-K, O-K, O-L1, O-L2 and O-L3; the horizontal axis is logarithmic. Shell order matches the poster.
+- **Angles:** probabilities in eighteen 10° bins, accumulated over collisions throughout each recursive shower. The energy label identifies the primary photon, not every individual collision energy. The saved ASCII probabilities are rounded and preserved in the numeric data; each displayed histogram is normalized to sum one. Reported KS statistics come from the saved summaries.
+- **Shell selection:** fractions of recorded photoelectron tags in H-K, O-K, O-L1, O-L2 and O-L3; the horizontal axis is logarithmic.
 - **Pair sharing:** thirty equal bins of electron kinetic fraction, $f=T_-/(T_-+T_+)$. Adjacent electron and positron secondary records are matched from the same pair event.
 - **Interaction fractions:** fractions of recorded events throughout the recursive shower, with a separate enlarged pair-production panel. They are not cross-section ratios at the primary energy alone.
 
-Error bars are omitted as in the poster. MC1–MC2 differences illustrate finite-sampling variability and are not confidence intervals. The two reference runs and Beam Weaver share photon free-flight sampling and approximate electron/positron transport.
+Error bars are omitted. MC1–MC2 differences illustrate finite-sampling variability and are not confidence intervals. The two reference runs and Beam Weaver share photon free-flight sampling and approximate electron/positron transport.
 
 ## Recorded execution times
 
@@ -72,9 +58,9 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ![1 MeV — Compton polar angle](figures/1MeV/compton_angle.png)
 
-### Photoelectric polar angle and shell selection
+### Photoelectric polar angle
 
-![1 MeV — Photoelectric polar angle and shell selection](figures/1MeV/photoelectric_angle_shell.png)
+![1 MeV — Photoelectric polar angle](figures/1MeV/photoelectric_angle_shell.png)
 
 
 ### Interaction fractions
@@ -92,13 +78,10 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ![2 MeV — Compton polar angle](figures/2MeV/compton_angle.png)
 
-### Photoelectric polar angle and shell selection
+### Photoelectric polar angle
 
-![2 MeV — Photoelectric polar angle and shell selection](figures/2MeV/photoelectric_angle_shell.png)
+![2 MeV — Photoelectric polar angle](figures/2MeV/photoelectric_angle_shell.png)
 
-### Pair kinetic-energy sharing
-
-![2 MeV — Pair kinetic-energy sharing](figures/2MeV/pair_share.png)
 
 ### Interaction fractions
 
@@ -148,13 +131,10 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ![10 MeV — Compton polar angle](figures/10MeV/compton_angle.png)
 
-### Photoelectric polar angle and shell selection
+### Photoelectric polar angle
 
-![10 MeV — Photoelectric polar angle and shell selection](figures/10MeV/photoelectric_angle_shell.png)
+![10 MeV — Photoelectric polar angle](figures/10MeV/photoelectric_angle_shell.png)
 
-### Pair kinetic-energy sharing
-
-![10 MeV — Pair kinetic-energy sharing](figures/10MeV/pair_share.png)
 
 ### Interaction fractions
 
@@ -162,7 +142,7 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ## Data and reproduction
 
-The compact [campaign data](data/campaign.json) contains the numeric dose arrays, angular probabilities, shell counts, pair-sharing histogram counts, timing and original run identifiers used here. Each source file is identified by its name, energy, byte size and SHA-256 hash. The [poster figure manifest](data/poster_figures.json) records the exact original PNG/PDF hashes and attachment provenance. 
+The compact [campaign data](data/campaign.json) contains the numeric dose arrays, angular probabilities, shell counts, pair-sharing histogram counts, timing and original run identifiers used here. Each source file is identified by its name, energy, byte size and SHA-256 hash. The [original figure manifest](data/original_figures.json) records the exact original PNG/PDF hashes and source archive. 
 
 From the repository root, with NumPy and Matplotlib installed:
 
@@ -170,5 +150,5 @@ From the repository root, with NumPy and Matplotlib installed:
 python scripts/plot_results.py
 ```
 
-The plotter regenerates the figures from these compact numeric inputs and preserves the five original 5 MeV poster PNGs. See `python scripts/plot_results.py --help` for a separate output directory and for regenerating a comparison set for the poster energy. No checkpoint or simulation is needed for plotting. Large original pickle archives are not needed or loaded by this plotter.
+The plotter regenerates the figures from these compact numeric inputs and preserves the five original 5 MeV PNGs. See `python scripts/plot_results.py --help` for a separate output directory and for regenerating a comparison set at 5 MeV. No checkpoint or simulation is needed for plotting. Large original pickle archives are not needed or loaded by this plotter.
 

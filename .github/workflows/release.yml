@@ -41,6 +41,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/release.py
+      - name: Update published release notes
+        if: steps.release.outputs.update_notes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_NOTES: ${{ steps.release.outputs.notes }}
+        run: |
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file "$RELEASE_NOTES"
       - name: Build distributions
         if: steps.release.outputs.publish == 'true'
         run: |

@@ -15,8 +15,8 @@ data, train, simulate, compare and validate.
 - Retain the six existing water tables and license notices.
 - Update installation, citation information and documentation for the method.
 - Restore the all-versions Zenodo DOI and prepare a tested 0.4.0 release.
-- Reproduce the corrected ECMP poster introduction verbatim and add the saved
-  five-energy campaign, original 5 MeV figures and reproducible plot data.
+- Document the method and add v0.4.0 results at five primary energies,
+  original 5 MeV figures and reproducible plot data.
 
 The complete preceding repository, including the SAC implementation and its
 manuscript, is preserved at
