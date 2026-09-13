@@ -154,6 +154,15 @@ def exercise(implementation: SimpleNamespace) -> dict:
     report['transform_max_error'] = m.bw4_transform_selftest()
     grids = m.bw4_grids()
     report['grid_hash'] = grids['sha256']
+    # Retain the exact digest for same-runtime comparisons, but also expose
+    # numeric grids so portable regressions can tolerate libm roundoff.
+    grid_hash = hashlib.sha256()
+    for role in ('train', 'val', 'test'):
+        grid_hash.update(role.encode())
+        grid_hash.update(grids[role].tobytes())
+    assert grids['sha256'] == grid_hash.hexdigest()
+    report['energy_grids'] = {role: plain(grids[role])
+                              for role in ('train', 'val', 'test')}
     assert (len(grids['train']), len(grids['val']), len(grids['test'])) == (69, 63, 9)
     assert grids['pair_threshold'] == (m.PAIR_THRESHOLD_MEV
         if hasattr(m, 'PAIR_THRESHOLD_MEV') else 2. * m.MEC2_MEV)

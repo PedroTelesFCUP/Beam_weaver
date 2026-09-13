@@ -13,6 +13,12 @@ transport. No production tables, training dataset, or checkpoint is required.
   zero-support interpolation. Golden floating-point outputs use relative
   tolerance `1e-12` and absolute tolerance `1e-14`; categories, structures,
   and subsequent RNG draws must match exactly.
+  Energy grids use the original generator-specification values with relative
+  tolerance `1e-14` and zero absolute tolerance; their shape, ordering, and
+  formatted energy tags used for random seeds must match. Each grid digest
+  must match its actual array bytes. The historical digest remains in the
+  fixture for provenance and exact same-runtime reports, but is not compared
+  across platforms because NumPy/libm roundoff can change those bytes.
 - Four guard tests check reference entry points, module aliases, shell
   selectors, exception cleanup, nested-entry rejection, and restoration of
   aliases imported while the guard is active.
