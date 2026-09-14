@@ -1,5 +1,5 @@
 {
-  "description": "The five original 5 MeV PNG figures and associated vector PDFs are retained byte-for-byte from the archived figure package. The default plotter preserves these originals; --regenerate-originals can redraw from the committed comparison data to a separate output directory.",
+  "description": "The five original 5 MeV PNG figures and associated vector PDFs are retained byte-for-byte from the archived figure package.",
   "archive_filename": "BeamWeaver_5MeV_results_figures.zip",
   "archive_sha256": "80612e5790036184259db27409dec74c4388848745fe7cc5d8c70a5b55efa25f",
   "assets": [

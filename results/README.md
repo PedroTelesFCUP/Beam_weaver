@@ -140,15 +140,6 @@ These are wall-clock times in seconds from the saved campaign. Hardware informat
 
 ![10 MeV — Interaction fractions](figures/10MeV/interaction_fractions.png)
 
-## Data and reproduction
+## Data
 
-The compact [campaign data](data/campaign.json) contains the numeric dose arrays, angular probabilities, shell counts, pair-sharing histogram counts, timing and original run identifiers used here. Each source file is identified by its name, energy, byte size and SHA-256 hash. The [original figure manifest](data/original_figures.json) records the exact original PNG/PDF hashes and source archive. 
-
-From the repository root, with NumPy and Matplotlib installed:
-
-```bash
-python scripts/plot_results.py
-```
-
-The plotter regenerates the figures from these compact numeric inputs and preserves the five original 5 MeV PNGs. See `python scripts/plot_results.py --help` for a separate output directory and for regenerating a comparison set at 5 MeV. No checkpoint or simulation is needed for plotting. Large original pickle archives are not needed or loaded by this plotter.
-
+The compact [campaign data](data/campaign.json) contains the numeric dose arrays, angular probabilities, shell counts, pair-sharing histogram counts, timing and original run identifiers used here. Each source file is identified by its name, energy, byte size and SHA-256 hash. The [original figure manifest](data/original_figures.json) records the exact original PNG/PDF hashes and source archive.
