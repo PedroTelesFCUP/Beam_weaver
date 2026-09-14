@@ -7,11 +7,11 @@ approximate lepton transport remain explicit simulation components.
 
 ```mermaid
 flowchart TD
-    R["Reference collision samplers"] --> D["Training, validation and test data"]
-    D --> T["Train thirteen heads"]
+    R["Monte Carlo sampling of different interactions"] --> D["Training, validation and test data"]
+    D --> T["Thirteen disjoint heads trained"]
     T --> C["Policy checkpoint"]
-    C --> L["Learned collision sampling"]
-    R --> M["Reference collision sampling"]
+    C --> L["Learned interaction sampling"]
+    R --> M["Reference (Monte Carlo) collision sampling"]
     L --> P["Transport and energy accounting"]
     M --> P
     P --> O["Histories, tallies and comparisons"]
@@ -20,23 +20,19 @@ flowchart TD
 | Module | Responsibility |
 | --- | --- |
 | `constants`, `materials` | Numerical definitions, category ordering and material tables |
-| `physics`, `events`, `coordinates` | Reference collision sampling, event records and learned-variable transforms |
-| `geometry`, `transport` | Sources, boundaries, photon banks and shared lepton transport |
-| `dataset` | Collision samples, saved splits, bin edges and representation checks |
-| `policy`, `training` | Head distributions, collision sampling, cross-entropy training and checkpoints |
+| `physics`, `events`, `coordinates` | Monte Carlo interaction sampling (Beam Spinner), event records and learned-variable transforms |
+| `geometry`, `transport` | Sources, boundaries, photon banks and shared electron/positron transport |
+| `dataset` | Interaction samples, saved splits, bin edges and representation checks |
+| `policy`, `training` | Head distributions, interaction sampling, cross-entropy training and checkpoints |
 | `audit`, `validation` | Execution provenance, energy accounting and distribution checks |
 | `evaluation`, `reporting`, `cli` | Comparisons, figures, commands and the menu |
 
-The Compton reference implementation separates
-`ComptonEnergyTransferSampler.sample_energy_transfer()`, which samples energy
-transfer, from `sample_compton_event()`, which constructs the outgoing photon
-and recoil-electron event. Both are active and live in `physics.py`.
 
-Heads receive energy and the shell or lepton variables required by their
+
+Heads receive information on energy and the shell or lepton variables' required by their
 factorization. Position and direction remain part of the transported particle
 state. Continuous outputs use categorical bins followed by within-bin sampling
-and inverse transforms. A collision invokes the heads needed for its selected
-interaction.
+and inverse transforms. An interaction invokes the necessary heads.
 
 The [development records](development) retain dated extraction and constants
 checks. Historical file paths and old symbols there describe the cleanup
