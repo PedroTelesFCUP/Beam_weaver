@@ -1,6 +1,6 @@
 """Rebuild comparison figures from saved Beam Weaver artifacts."""
 
-# Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
+# Copyright (c) 2025–2026 Pedro Teles. Apache-2.0.
 
 import json
 from pathlib import Path
