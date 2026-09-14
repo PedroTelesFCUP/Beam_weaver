@@ -2,7 +2,7 @@
 
 Any user-defined table can be used as long as with the proper format. In the current implementation, only water was used, but other materials can and will be used in the future (and can be manually created by users).
 
-Future work will produce these tables automatically or eventually providing tables for different materials.
+Future work will produce these tables automatically or eventually provide tables for different materials.
 
 # Water Values
 
