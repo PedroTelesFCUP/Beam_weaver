@@ -54,7 +54,7 @@ Heads:
 - Rayleigh azimuth angle $\phi_R$;
 - Compton normalized energy transfer $u$;
 - Compton azimuth angle $\phi_C$;
-- Photoelectron shell;
+- Photoelectron shell [O-K, O-L1, O-L2, O-L3, H-K];
 - Photoelectron transformed angle $\nu_{Ph} = 1−\cos \theta_{Ph}$;
 - Photoelectron azimuth angle $\phi_{Ph}$;
 - Pair production kinetic-energy share;
