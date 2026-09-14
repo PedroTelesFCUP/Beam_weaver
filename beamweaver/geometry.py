@@ -1,6 +1,6 @@
 """Homogeneous water phantom and the current policy energy encoding."""
 
-# Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
+# Copyright (c) 2025–2026 Pedro Teles. Apache-2.0.
 
 import math
 import random
