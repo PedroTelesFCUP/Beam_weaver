@@ -451,7 +451,7 @@ def sample_pair_event(E, old_dir, data):
     treatment ('all the events are simulated as if they were pairs',
     justified because the triplet recoil electron's range is much smaller
     than the photon mean free path).  The triplet inner-shell vacancy PENELOPE
-    assigns is not modelled (Beam Weaver does not model atomic relaxation).
+    assigns is not modelled (Beam Spinner does not model atomic relaxation).
     """
     if E < PAIR_THRESHOLD_MEV:
         return (old_dir, E, [], "pair_subthresh", [0] * N_SHELLS)
