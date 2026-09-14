@@ -1,8 +1,12 @@
-# Water tables
+# Material tables
 
-The six root CSVs are preserved byte-for-byte from commit
-`67a5af859c95e5f09cafe460b53d806a181dcc1c`. The repository refresh changes their
-packaging and documentation, not their contents.
+Any user-defined table can be used as long as with the proper format. In the current implementation, only water was used, but other materials can and will be used in the future (and can be manually created by users).
+
+Future work will produce these tables automatically or eventually providing tables for different materials.
+
+# Water Values
+
+Water values were taken from different sources, in order to improve the results. Earlier versions used XCOM values for cross-sections and analytical approximation values for the form factors. The current implementation uses values taken directly from the EPDL database for Compton, Photo, and Pair Production. Rayleigh cross-section values were taken from the Penelope 'water.mat' information file. Pair production is the sum between duplet and triplet values. Stopping Power values were taken from the NIST website (ESTAR database).
 
 | Tables | Provenance recorded in the earlier repository |
 | --- | --- |
@@ -11,11 +15,8 @@ packaging and documentation, not their contents.
 | Rayleigh | Penelope water.mat data |
 | `water_sq.csv` | Hubbell et al. (1975), using `2*S_H + S_O`. |
 | `water_fq.csv` | Hubbell et al. (1975), using `2*F_H + F_O`. |
-| `ElectronStoppingPower.csv` | ESTAR (NIST data |
+| `ElectronStoppingPower.csv` | ESTAR (NIST data) |
 
-This records existing attribution; it is not an independent verification of
-the tabulations. The original manuscript and bibliography remain in the
-[preserved SAC snapshot](https://github.com/PedroTelesFCUP/Beam_weaver/tree/archive/sac-before-0.4.0/paper).
 
 Photon and shell tables span 0.001–1000 MeV. Stopping powers span 0.01–1000 MeV;
 the current interpolation uses the first table value below 10 keV. The learned
@@ -26,10 +27,7 @@ column called `q` is the table coordinate `x`; the samplers evaluate it at
 The pair cross section is tabulated as zero at 1.022 MeV and first positive at
 1.03 MeV. Current interpolation returns zero between a zero endpoint and the
 next positive endpoint, so a positive kinematic pair allowance does not imply
-positive process-selection probability throughout that interval. This
-behavior predates the repository refresh.
+positive process-selection probability throughout that interval. 
 
-Current loaders accept all six tables. Column, finite-value, ordering and basic
-interpolation checks establish execution compatibility, not physical
-validation. External table terms remain separate from the project code's
+External table terms remain separate from the project code's
 Apache license; see [LICENSE-THIRD-PARTY.md](../LICENSE-THIRD-PARTY.md).
