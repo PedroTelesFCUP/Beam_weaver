@@ -45,7 +45,23 @@ p̂  - Beam Spinner frequencies (or one-hot target)   •   q - Beam Weaver prob
 
 ## Method
 
-Thirteen heads with disjoint parameters represent interaction selection, photoelectric shell selection, and the energy-sharing and angular variables of Rayleigh scattering, Compton scattering, photoelectric absorption and pair production. Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
+Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors, totalling 155,127 trainable parameters. 
+
+Heads:
+
+- Interaction choice;
+- Rayleigh transformed polar angle sR = ln[(1−cosθR)/2];
+- Rayleigh azimuth angle φR;
+- Compton normalized energy transfer u;
+- Compton azimuth φC;
+- Photoelectron shell;
+- Photoelectron transformed angle νPh = 1−cosθPh;
+- Photoelectron azimuth φPh;
+- Pair production kinetic-energy share;
+- Electron/positron transformed angles νpp±(2);
+- Electron/positron azimuth φpp± (2);
+
+ Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
 
 Training minimizes cross-entropy against reference samples or their empirical category distributions. The heads use photon energy and, where required, the selected shell or sampled electron/positron energy fraction. Training proceeds head by head, with validation-based stopping and restoration of the best weights when overfitting. The learned energy domain is **0.001–10 MeV**.
 
