@@ -6,11 +6,12 @@ packaging and documentation, not their contents.
 
 | Tables | Provenance recorded in the earlier repository |
 | --- | --- |
-| Rayleigh, Compton and pair/triplet cross sections | The earlier manuscript describes PENELOPE-derived tables. |
-| Photoelectric cross sections and shell data | The manuscript describes EPDL data; the shell file contains hydrogen K and oxygen K, L1, L2 and L3 contributions. |
-| `water_sq.csv` | The earlier README cites Hubbell et al. (1975), using `2*S_H + S_O`. |
-| `water_fq.csv` | The earlier README describes Cromer–Mann-style interpolation. A more specific extraction provenance is not established by the documentation. |
-| `ElectronStoppingPower.csv` | The exact source and conversion procedure are not established by the documentation. |
+| Compton and pair/triplet cross sections | EPDL data |
+| Photoelectric cross sections and shell data | EPDL data|
+| Rayleigh | Penelope water.mat data |
+| `water_sq.csv` | Hubbell et al. (1975), using `2*S_H + S_O`. |
+| `water_fq.csv` | Hubbell et al. (1975), using `2*F_H + F_O`. |
+| `ElectronStoppingPower.csv` | ESTAR (NIST data |
 
 This records existing attribution; it is not an independent verification of
 the tabulations. The original manuscript and bibliography remain in the
