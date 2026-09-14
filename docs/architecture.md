@@ -7,11 +7,11 @@ approximate lepton transport remain explicit simulation components.
 
 ```mermaid
 flowchart TD
-    R["Monte Carlo sampling of different interactions"] --> D["Training, validation and test data"]
+    R["Monte Carlo sampling of different interactions (Beam Spinner)"] --> D["Training, validation and test data"]
     D --> T["Thirteen disjoint heads trained"]
     T --> C["Policy checkpoint"]
-    C --> L["Learned interaction sampling"]
-    R --> M["Reference (Monte Carlo) collision sampling"]
+    C --> L["Learned interaction sampling (Beam Weaver)"]
+    R --> M["Reference (Monte Carlo) collision sampling (Beam Spinner)"]
     L --> P["Transport and energy accounting"]
     M --> P
     P --> O["Histories, tallies and comparisons"]
