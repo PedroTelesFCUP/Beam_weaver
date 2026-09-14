@@ -5,7 +5,7 @@ coordinate transforms and pair support share the canonical ``mec2``.
 Equal-valued settings with different meanings remain independent.
 """
 
-# Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
+# Copyright (c) 2025–2026 Pedro Teles. Apache-2.0.
 
 import numpy as np
 
