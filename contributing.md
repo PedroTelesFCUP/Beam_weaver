@@ -1,8 +1,5 @@
 # Contributing to Beam Weaver
 
-Contributions can improve collision samplers, learned distributions, numerical
-validation, performance, documentation and reproducibility.
-
 For a bug report, include the command or menu choices, Python and dependency
 versions, photon energy, seed, table/dataset/checkpoint provenance, and the
 smallest example that reproduces the problem. Include any traceback.
