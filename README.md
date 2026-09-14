@@ -196,3 +196,7 @@ The project code is licensed under the [Apache License, Version 2.0](LICENSE). S
 [3] D. E. Cullen, J. H. Hubbell and L. Kissel, *EPDL97: The Evaluated Photon Data Library, ’97 Version* (1997). [doi:10.2172/295438](https://doi.org/10.2172/295438). J. H. Hubbell et al., “Atomic form factors, incoherent scattering functions, and photon scattering cross sections,” *Journal of Physical and Chemical Reference Data* **4**, 471–538 (1975). [doi:10.1063/1.555523](https://doi.org/10.1063/1.555523).
 
 Beam Spinner’s transport and sampling scheme draws substantially on the published PENELOPE algorithms; the author gratefully acknowledges Francesc Salvat, José M. Fernández-Varea, Josep Sempau and the wider PENELOPE development team.
+
+## AI disclosure
+
+ChatGPT (OpenAI) and Claude (Anthropic) assisted with coding and the preparation of diagrams, figures and documentation. The author reviewed the physics, implementation, analyses and interpretations and assumes full responsibility for the final work.
