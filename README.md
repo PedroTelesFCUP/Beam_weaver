@@ -50,16 +50,16 @@ Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, a
 Heads:
 
 - Interaction choice;
-- Rayleigh transformed polar angle sR = ln[(1−cosθR)/2];
-- Rayleigh azimuth angle φR;
-- Compton normalized energy transfer u;
-- Compton azimuth φC;
+- Rayleigh transformed polar angle $s_R = \ln[(1−cosθ_R)/2]$;
+- Rayleigh azimuth angle $\phi_R$;
+- Compton normalized energy transfer $u$;
+- Compton azimuth $\phi_C$;
 - Photoelectron shell;
-- Photoelectron transformed angle νPh = 1−cosθPh;
-- Photoelectron azimuth φPh;
+- Photoelectron transformed angle $\nu_{Ph} = 1−cosθ_{Ph}$;
+- Photoelectron azimuth $\phi_{Ph}$;
 - Pair production kinetic-energy share;
-- Electron/positron transformed angles νpp±(2);
-- Electron/positron azimuth φpp± (2);
+- Electron/positron transformed angles $\nu_{pp} \pm$(2);
+- Electron/positron azimuth $\phi_{pp} \pm$ (2);
 
  Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
 
