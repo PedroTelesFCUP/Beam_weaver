@@ -1,6 +1,6 @@
 """Audited Beam Weaver showers and independent MC reference comparisons."""
 
-# Copyright (c) 2025–2026 Pedro Teles & João Melo. Apache-2.0.
+# Copyright (c) 2025–2026 Pedro Teles. Apache-2.0.
 
 from .constants import runtime_physics_metadata
 from .constants import PAIR_THRESHOLD_MEV
