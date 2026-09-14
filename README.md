@@ -53,13 +53,13 @@ Heads:
 - Rayleigh transformed polar angle $s_R = \ln[(1−cosθ_R)/2]$;
 - Rayleigh azimuth angle $\phi_R$;
 - Compton normalized energy transfer $u$;
-- Compton azimuth $\phi_C$;
+- Compton azimuth angle $\phi_C$;
 - Photoelectron shell;
 - Photoelectron transformed angle $\nu_{Ph} = 1−cosθ_{Ph}$;
-- Photoelectron azimuth $\phi_{Ph}$;
+- Photoelectron azimuth angle $\phi_{Ph}$;
 - Pair production kinetic-energy share;
-- Electron/positron transformed angles $\nu_{pp} \pm$(2);
-- Electron/positron azimuth $\phi_{pp} \pm$ (2);
+- Electron/positron transformed angles $\nu_{pp}^{\pm}$(2);
+- Electron/positron azimuth $\phi_{pp}^{\pm}$ (2);
 
  Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
 
