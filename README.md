@@ -16,32 +16,94 @@ After training, In its current form, Beam Weaver can successfully transport phot
 
 $$
 \pi_{\Theta}(\mathbf{Z}_t\mid E_t)
-=\prod_{h=1}^{13}q_{\theta_h}(Z_{t,h}\mid X_{t,h})^{m_{t,h}},
-\qquad m_{t,h}\in\{0,1\},\qquad q^1=q,\ q^0=1
+=
+\prod_{h=1}^{13}
+q_{\theta_h}(Z_{t,h}\mid X_{t,h})^{m_{t,h}},
+\qquad
+m_{t,h}\in\{0,1\}.
 $$
 
-At collision t, Beam Weaver constructs the probability of event Zₜ by multiplying the predicted probabilities inferred by the relevant heads for each quantity q. Relevant heads are activated by a binary mask mₜ,ₕ which makes each irrelevante head contribute 1 to the final value.
+At collision $t$, Beam Weaver assigns a probability to the binned event
+$\mathbf{Z}_t$ by multiplying the conditional probabilities predicted
+by the active heads for their respective outcomes $Z_{t,h}$.
+Each head is conditioned on the photon energy and any earlier outcomes
+required to predict its quantity.
 
-t - collision   •   h - head index (1–13)   •   Eₜ - photon energy before collision   •   Zₜ - complete binned event   •   Zₜ,ₕ  - head-h bin
+The binary mask $m_{t,h}$ determines whether head $h$ is applicable
+to the event. When $m_{t,h}=1$, the head contributes its predicted
+probability. When $m_{t,h}=0$, the head is omitted from the product,
+equivalently assigning its factor the value $1$.
 
-Xₜ,ₕ - energy plus required earlier outcomes   •   q  - distribution predicted by head h   •   θₕ  - head-h parameters   •   mₜ,ₕ  - relevance switch   •   Θ  - all learned parameters
+| Symbol | Meaning |
+| :--- | :--- |
+| $\pi_{\Theta}(\mathbf{Z}_t\mid E_t)$ | Probability assigned by Beam Weaver to the binned collision event $\mathbf{Z}_t$, conditional on the incoming photon energy $E_t$. |
+| $\Theta=\{\theta_h\}_{h=1}^{13}$ | Collection of trainable parameter sets for the 13 heads. |
+| $t$ | Collision index. |
+| $h$ | Head index, from 1 to 13. |
+| $E_t$ | Photon energy immediately before collision $t$. |
+| $\mathbf{Z}_t$ | Event vector containing the binned stochastic outcomes of collision $t$. |
+| $Z_{t,h}$ | Output-bin index representing the outcome associated with head $h$ at collision $t$, when that head is active. |
+| $X_{t,h}$ | Conditioning input supplied to head $h$: the photon energy and any required earlier outcomes within the same collision event. |
+| $\theta_h$ | Trainable parameters of head $h$. |
+| $q_{\theta_h}(\cdot\mid X_{t,h})$ | Conditional probability distribution predicted by head $h$ over its output bins. |
+| $q_{\theta_h}(Z_{t,h}\mid X_{t,h})$ | Predicted probability of the particular output bin $Z_{t,h}$. |
+| $m_{t,h}$ | Binary applicability mask: $1$ when head $h$ is active for the event and $0$ otherwise. |
 
 ### Masked cross-entropy training
 
-$$
+```math
 \mathcal{L}(\Theta)
-=\sum_{h=1}^{13}\sum_{g\in\mathcal{G}_h}
-H\!\left(\widehat{\mathbf{p}}_{g,h},\mathbf{q}_{\theta_h}(\cdot\mid X_{g,h})\right),
-\qquad H(\mathbf{p},\mathbf{q})
-=-\sum_{k=1}^{K_h}p_k\ln q_k
-=H(\mathbf{p})+D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q})
-$$
+=
+\sum_{h=1}^{13}
+\sum_{g\in\mathcal{G}_h}
+H\left(
+\widehat{\mathbf{p}}_{g,h},
+\mathbf{q}_{\theta_h}(\cdot\mid X_{g,h})
+\right).
+```
 
-Each active head learns Beam Spinner’s observed bin frequencies. Taking −log turns the event product into a sum; because the heads have disjoint parameters, each can be trained separately. For a fixed target, minimizing cross-entropy also minimizes KL divergence [1].
+Here, cross-entropy is defined by
 
-ℒ -  total loss   •   𝒢ₕ - teaching targets for head h   •   g -  condition group or event   •   k  - output-bin index (Kₕ bins)
+```math
+H(\mathbf{p},\mathbf{q})
+=
+-\sum_{k=1}^{K_h} p_k \ln q_k
+=
+H(\mathbf{p})
++
+D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q}).
+```
 
-p̂  - Beam Spinner frequencies (or one-hot target)   •   q - Beam Weaver probabilities   •   H(p,q) -  cross-entropy   •   H(p) - fixed target entropy   •   Dₖₗ - remaining mismatch
+Each active head is trained against Beam Spinner targets, represented
+by empirical bin frequencies for a condition group or by a one-hot
+vector for an individual event. The set $\mathcal{G}_h$ contains only
+the targets for which head $h$ is active; inactive heads therefore
+do not contribute to the corresponding training loss.
+
+At the event level, taking the negative logarithm of the factorized
+event probability produces a sum over active heads. With fixed
+targets and conditioning inputs, the heads can be trained separately
+because their parameter sets are disjoint. For a fixed target
+distribution, its entropy does not depend on the model parameters,
+so minimizing cross-entropy also minimizes KL divergence [1].
+
+| Symbol | Meaning |
+| :--- | :--- |
+| $\mathcal{L}(\Theta)$ | Total training loss. |
+| $\Theta$ | Collection of trainable parameters across all 13 heads. |
+| $h$ | Head index, from 1 to 13. |
+| $\theta_h$ | Trainable parameters of head $h$. |
+| $\mathcal{G}_h$ | Set of training-target indices for which head $h$ is active. |
+| $g$ | Index identifying an individual event or a condition group. |
+| $X_{g,h}$ | Conditioning input supplied to head $h$ for target $g$. |
+| $\widehat{\mathbf{p}}_{g,h}$ | Beam Spinner target probability vector: empirical bin frequencies for a condition group, or a one-hot vector for an individual event. |
+| $\mathbf{q}_{\theta_h} (\cdot \mid X _{g,h} )$ | Probability vector predicted by head $h$ for the given conditioning input. |
+| $K_h$ | Number of output bins for head $h$. |
+| $k$ | Output-bin index, from 1 to $K_h$. |
+| $p_k,\ q_k$ | Components of the target and predicted probability vectors in the definition of cross-entropy. |
+| $H(\mathbf{p},\mathbf{q})$ | Cross-entropy between the target and predicted distributions. |
+| $H(\mathbf{p})$ | Entropy of the target distribution, constant with respect to the model parameters. |
+| $D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q})$ | Kullback–Leibler divergence from the target distribution to the predicted distribution. |
 
 ## Method
 
