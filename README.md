@@ -12,6 +12,8 @@ After training, In its current form, Beam Weaver can successfully transport phot
 
 ## Mathematical framework
 
+
+
 ### Factorized collision law
 
 ```math
@@ -23,23 +25,21 @@ q_{\theta_h}(Z_{t,h}\mid X_{t,h})^{m_{t,h}},
 m_{t,h}\in\{0,1\}.
 ```
 
-At collision $t$, Beam Weaver assigns a probability to the binned event
-$\mathbf{Z}_t$ by multiplying the conditional probabilities predicted
-by the active heads for their respective outcomes $Z_{t,h}$.
-Each head is conditioned on the photon energy and any earlier outcomes
-required to predict its quantity.
+At interaction $t$, the probability Beam Weaver assigns to the binned event
+$\mathbf{Z_t}$ is the product of all the probabilities predicted
+by each and every active head of their respective outcomes $Z_{t,h}$, given the incident photon energy $E_t$, and any earlier outcomes required to predict their quantity.
 
-The binary mask $m_{t,h}$ determines whether head $h$ is applicable
-to the event. When $m_{t,h}=1$,  $q^1=q$. When $m_{t,h}=0$, $q^0=1$.
+The binary mask $m_{t,h}$ serves to activate the heads $h$ applicable
+to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When $m_{t,h}=0$, $q^0=1$.
 
 | Symbol | Meaning |
 | :--- | :--- |
-| $\pi_{\Theta}(\mathbf{Z}_t\mid E_t)$ | Probability assigned by Beam Weaver to the binned collision event $\mathbf{Z}_t$, conditional on the incoming photon energy $E_t$. |
+| $\pi_{\Theta}(\mathbf{Z_t}\mid E_t)$ | Final probability assigned by Beam Weaver to the binned collision event $\mathbf{Z}_t$, given the incoming photon energy $E_t$. |
 | $\Theta=\{\theta_h\}_{h=1}^{13}$ | Collection of trainable parameter sets for the 13 heads. |
 | $t$ | Collision index. |
 | $h$ | Head index, from 1 to 13. |
 | $E_t$ | Photon energy immediately before collision $t$. |
-| $\mathbf{Z}_t$ | Event vector containing the binned stochastic outcomes of collision $t$. |
+| $\mathbf{Z_t}$ | Event vector containing the binned stochastic outcomes of collision $t$. |
 | $Z_{t,h}$ | Output-bin index representing the outcome associated with head $h$ at collision $t$, when that head is active. |
 | $X_{t,h}$ | Conditioning input supplied to head $h$: the photon energy and any required earlier outcomes within the same collision event. |
 | $\theta_h$ | Trainable parameters of head $h$. |
@@ -95,7 +95,7 @@ so minimizing cross-entropy also minimizes KL divergence [1].
 | $g$ | Index identifying an individual event or a condition group. |
 | $X_{g,h}$ | Conditioning input supplied to head $h$ for target $g$. |
 | $\widehat{\mathbf{p}}_{g,h}$ | Beam Spinner target probability vector: empirical bin frequencies for a condition group, or a one-hot vector for an individual event. |
-| $\mathbf{q}_{\theta_h} (\cdot \mid X _{g,h} )$ | Probability vector predicted by head $h$ for the given conditioning input. |
+| $\mathbf{q_{\theta_h}} (\cdot \mid X _{g,h} )$ | Probability vector predicted by head $h$ for the given conditioning input. |
 | $K_h$ | Number of output bins for head $h$. |
 | $k$ | Output-bin index, from 1 to $K_h$. |
 | $p_k,\ q_k$ | Components of the target and predicted probability vectors in the definition of cross-entropy. |
@@ -104,6 +104,9 @@ so minimizing cross-entropy also minimizes KL divergence [1].
 | $D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q})$ | Kullback–Leibler divergence from the target distribution to the predicted distribution. |
 
 ## Method
+
+Beam Spinner recursively generates individual Monte Carlo outcomes for each interaction
+process at a specified photon energy, which are then used by Beam Weaver to learn the probabilities of these outcomes through categorical output heads. The interaction process and the photoelectric subshell are represented directly by their physical categories.
 
 Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors, totalling 155,127 trainable parameters. 
 
