@@ -108,9 +108,9 @@ At the event level, taking the negative logarithm of the factorized event probab
 
 Beam Spinner recursively generates individual Monte Carlo samples for each interaction
 process at a specified photon energy,  and, where applicable,
-for each atomic subshell.  Beam Weaver uses this samples to learn the probabilities of these outcomes through categorical output heads. 
+for each atomic subshell.  Beam Weaver uses these samples to learn  outcome probabilities  through its categorical output heads. 
 
-Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors (given a uniform target distribution, no energy or polar angle input is necessary, the logits are directly compared to the Monte Carlo sampled azimuth frequencies). This totals 155,127 trainable parameters, if default initial binning is used. A softmax converts each head's logits into probabilities.
+Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors (given that, for unpolarized photon scattering in an isotropic medium there is no preferred azimuthal direction, which therefore defines a uniform target distribution, no energy or polar angle input is necessary, the logits are directly compared to the Monte Carlo sampled azimuth frequencies). This totals 155,127 trainable parameters, if default initial binning is used. A softmax converts each head's logits into probabilities.
 
 | Head $h$ | Stochastic quantity | Categories or represented quantity | Physical inputs | Default categories or bins $K_h$ (binning resolution can be increased if sampling is sparse) |
 | :---: | :--- | :--- | :--- | ---: |
