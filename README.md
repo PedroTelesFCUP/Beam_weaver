@@ -30,9 +30,7 @@ Each head is conditioned on the photon energy and any earlier outcomes
 required to predict its quantity.
 
 The binary mask $m_{t,h}$ determines whether head $h$ is applicable
-to the event. When $m_{t,h}=1$, the head contributes its predicted
-probability. When $m_{t,h}=0$, the head is omitted from the product,
-equivalently assigning its factor the value $1$.
+to the event. When $m_{t,h}=1$,  $q^1=q$. When $m_{t,h}=0$, $q^0=1$.
 
 | Symbol | Meaning |
 | :--- | :--- |
