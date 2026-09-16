@@ -14,14 +14,14 @@ After training, In its current form, Beam Weaver can successfully transport phot
 
 ### Factorized collision law
 
-$$
+```math
 \pi_{\Theta}(\mathbf{Z}_t\mid E_t)
 =
 \prod_{h=1}^{13}
 q_{\theta_h}(Z_{t,h}\mid X_{t,h})^{m_{t,h}},
 \qquad
 m_{t,h}\in\{0,1\}.
-$$
+```
 
 At collision $t$, Beam Weaver assigns a probability to the binned event
 $\mathbf{Z}_t$ by multiplying the conditional probabilities predicted
