@@ -139,7 +139,7 @@ For nine heads, the reference targets are normalized category or bin counts, $\h
 
 Training minimizes cross-entropy against reference samples or their empirical category distributions. The heads use photon energy and, where required, the selected shell or sampled electron/positron energy fraction. Training proceeds head by head, with validation-based stopping and restoration of the best weights when overfitting. The learned energy domain is **0.001–10 MeV**.
 
-During transport, the predicted probabilities are used to sample the interaction process and its associated quantities. For a continuous quantity, a bin is selected first and a value is then sampled uniformly within that interval in the represented quantity listed above. Inverse transformations and the implemented kinematic relations yield the physical energies and directions. Uniform sampling within each bin is the remaining approximation to the distribution inside that interval.
+During transport, the predicted probabilities are used to sample the interaction process and its associated quantities. For a continuous quantity, a bin is selected first and a value is then sampled uniformly within that interval in the represented quantity listed above. This allows the inferred stochastic quantities to display continuous behaviour. Inverse transformations and the implemented kinematic relations yield the physical energies and directions. Uniform sampling within each bin is the remaining approximation to the distribution inside that interval.
 
 ## Experiment
 
