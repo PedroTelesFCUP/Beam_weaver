@@ -12,9 +12,11 @@ After training, In its current form, Beam Weaver can successfully transport phot
 
 ## Mathematical framework
 
+Each stochastic quantity (interaction type, atomic subshell, angle, etc.) is given its own disjoint trainable categorical head.
+Discrete quantities, such as the interaction process and atomic subshell, are inherently categorical therefore directly represented as such by their respective heads. 
+Continuous quantities,such as angular variables and energy fractions, must be divided into bins. Binning takes into account the natural variables that define each quantity. 
 
-
-### Factorized collision law
+### Factorized interaction law
 
 ```math
 \pi_{\Theta}(\mathbf{Z}_t\mid E_t)
@@ -27,7 +29,8 @@ m_{t,h}\in\{0,1\}.
 
 At interaction $t$, the probability Beam Weaver assigns to the binned event
 $\mathbf{Z_t}$ is the product of all the probabilities predicted
-by each and every active head of their respective outcomes $Z_{t,h}$, given the incident photon energy $E_t$, and any earlier outcomes required to predict their quantity.
+by each and every active head of their respective outcomes $Z_{t,h}$, given the incident photon energy $E_t$, and any earlier outcomes required to predict their quantity (basically saved quantities already sampled
+within the same interaction).
 
 The binary mask $m_{t,h}$ serves to activate the heads $h$ applicable
 to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When $m_{t,h}=0$, $q^0=1$.
@@ -36,18 +39,24 @@ to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When
 | :--- | :--- |
 | $\pi_{\Theta}(\mathbf{Z_t}\mid E_t)$ | Final probability assigned by Beam Weaver to the binned collision event $\mathbf{Z}_t$, given the incoming photon energy $E_t$. |
 | $\Theta=\{\theta_h\}_{h=1}^{13}$ | Collection of trainable parameter sets for the 13 heads. |
-| $t$ | Collision index. |
+| $t$ | Interaction index. |
 | $h$ | Head index, from 1 to 13. |
 | $E_t$ | Photon energy immediately before collision $t$. |
-| $\mathbf{Z_t}$ | Event vector containing the binned stochastic outcomes of collision $t$. |
-| $Z_{t,h}$ | Output-bin index representing the outcome associated with head $h$ at collision $t$, when that head is active. |
+| $\mathbf{Z_t}$ | Categorical representation of each and every stochastic quantities for interaction $t$. |
+| $Z_{t,h}$ | Categorical representation of the stochastic quantity assigned to head $h$, at interaction $t$, when that head is active. |
 | $X_{t,h}$ | Conditioning input supplied to head $h$: the photon energy and any required earlier outcomes within the same collision event. |
 | $\theta_h$ | Trainable parameters of head $h$. |
 | $q_{\theta_h}(\cdot\mid X_{t,h})$ | Conditional probability distribution predicted by head $h$ over its output bins. |
 | $q_{\theta_h}(Z_{t,h}\mid X_{t,h})$ | Predicted probability of the particular output bin $Z_{t,h}$. |
 | $m_{t,h}$ | Binary applicability mask: $1$ when head $h$ is active for the event and $0$ otherwise. |
 
+
+
 ### Masked cross-entropy training
+
+Each Monte Carlo simulated interaction quantity is represented by the observed category or the bin frequency. This serves as the input that is used to teach the targets in each disjoint head, according to its assignment.
+
+The training objective is
 
 ```math
 \mathcal{L}(\Theta)
@@ -72,18 +81,10 @@ H(\mathbf{p})
 D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q}).
 ```
 
-Each active head is trained against Beam Spinner targets, represented
-by empirical bin frequencies for a condition group or by a one-hot
-vector for an individual event. The set $\mathcal{G}_h$ contains only
-the targets for which head $h$ is active; inactive heads therefore
-do not contribute to the corresponding training loss.
 
-At the event level, taking the negative logarithm of the factorized
-event probability produces a sum over active heads. With fixed
-targets and conditioning inputs, the heads can be trained separately
-because their parameter sets are disjoint. For a fixed target
-distribution, its entropy does not depend on the model parameters,
-so minimizing cross-entropy also minimizes KL divergence [1].
+The set $\mathcal{G}_h$ contains only the targets for which head $h$ is active; inactive heads therefore do not contribute to the corresponding training loss.
+
+At the event level, taking the negative logarithm of the factorized event probability produces a sum over active heads, this provides a very convenient framework as it allows each head to be trained separatelt. For a fixed target distribution, its entropy does not depend on the model parameters, so minimizing cross-entropy also minimizes KL divergence [1].
 
 | Symbol | Meaning |
 | :--- | :--- |
@@ -108,25 +109,35 @@ so minimizing cross-entropy also minimizes KL divergence [1].
 Beam Spinner recursively generates individual Monte Carlo outcomes for each interaction
 process at a specified photon energy, which are then used by Beam Weaver to learn the probabilities of these outcomes through categorical output heads. The interaction process and the photoelectric subshell are represented directly by their physical categories.
 
-Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors, totalling 155,127 trainable parameters. 
+Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors (to learn their respective uniform distributions), totalling 155,127 trainable parameters. A softmax converts each head's logits into probabilities.
 
-Heads:
+| Head $h$ | Stochastic quantity | Categories or represented quantity | Physical inputs | Default categories or bins $K_h$ |
+| :---: | :--- | :--- | :--- | ---: |
+| 1 | Interaction process | Rayleigh, Compton, photoelectric absorption, pair production | $E$ | 4 |
+| 2 | Rayleigh polar scattering angle | $s_R=\ln[(1-\cos\theta_R)/2]$ | $E$ | 720 |
+| 3 | Rayleigh azimuthal angle | $\phi_R$ | None | 36 |
+| 4 | Compton normalized energy transfer | $u=(1-\tau)/(1-\tau_{\min})$ | $E$ | 180 |
+| 5 | Compton azimuthal angle | $\phi_C$ | None | 36 |
+| 6 | Photoelectric subshell | H-K, O-K, O-L1, O-L2, O-L3 | $E$ | 5 |
+| 7 | Photoelectron polar emission angle | $\nu_{Ph}=1-\cos\theta_{Ph}$ | $E$, selected subshell | 180 |
+| 8 | Photoelectron azimuthal angle | $\phi_{Ph}$ | Selected subshell | 36 |
+| 9 | Pair-production kinetic-energy sharing | $f=T_-/(T_-+T_+)$ | $E$ | 90 |
+| 10 | Pair electron polar emission angle | $\nu_{pp}^{-}=1-\cos\theta_{pp}^{-}$ | $E,\ f$ | 180 |
+| 11 | Pair electron azimuthal angle | $\phi_{pp}^{-}$ | $E,\ f$ | 36 |
+| 12 | Pair positron polar emission angle | $\nu_{pp}^{+}=1-\cos\theta_{pp}^{+}$ | $E,\ 1-f$ | 180 |
+| 13 | Pair positron azimuthal angle | $\phi_{pp}^{+}$ | $E,\ 1-f$ | 36 |
 
-- Interaction choice;
-- Rayleigh transformed polar angle $s_R = \ln[(1−\cos \theta_R)/2]$;
-- Rayleigh azimuth angle $\phi_R$;
-- Compton normalized energy transfer $u$;
-- Compton azimuth angle $\phi_C$;
-- Photoelectron shell [O-K, O-L1, O-L2, O-L3, H-K];
-- Photoelectron transformed angle $\nu_{Ph} = 1−\cos \theta_{Ph}$;
-- Photoelectron azimuth angle $\phi_{Ph}$;
-- Pair production kinetic-energy share;
-- Electron/positron transformed angles $\nu_{pp}^{\pm}$(2);
-- Electron/positron azimuth $\phi_{pp}^{\pm}$ (2);
+Both polar and azimuthal angles are defined in local frames with the polar axis following the incident photon direction, and later rotated to the lab frame if necessary. Energies are binned in a normalized logarithmic representation; finally, subshell inputs use a five-component one-hot representation [(1,0,0,0,0),(0,1,0,0,0),(0,0,1,0,0),(0,0,0,1,0),(0,0,0,0,1)].
 
- Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities.
+Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities using the appropriate constants.
+
+For continuous quantities other than azimuths, Monte Carlo sampling outcomes are pooled with equal contributions from each relevant training energy and, where applicable, subshell. Bin boundaries are placed at cleverly chosen quantiles: intervals are narrower where the pooled distribution is concentrated and wider where it is sparse, giving approximately equal pooled occupancies. Azimuthal angles use 36 equal-width bins over $[0,2\pi)$. An internal validation check can increase a continuous quantity's bin count before training; the final boundaries are then fixed throughout training and transport.
+
+For nine heads, the reference targets are normalized category or bin counts, $\widehat{p_g,h,k}=n_{g,h,k}/N_{g,h}$, where $n_{g,h,k}$ counts samples in category or bin $k$ and $N_{g,h}$ is the total count for that target. The four pair-direction heads instead use individual interaction samples, retaining the continuous electron/positron energy fraction as an input. Their targets are one-hot vectors: $1$ for the observed angular bin and $0$ elsewhere.
 
 Training minimizes cross-entropy against reference samples or their empirical category distributions. The heads use photon energy and, where required, the selected shell or sampled electron/positron energy fraction. Training proceeds head by head, with validation-based stopping and restoration of the best weights when overfitting. The learned energy domain is **0.001–10 MeV**.
+
+During transport, the predicted probabilities are used to sample the interaction process and its associated quantities. For a continuous quantity, a bin is selected first and a value is then sampled uniformly within that interval in the represented quantity listed above. Inverse transformations and the implemented kinematic relations yield the physical energies and directions. Uniform sampling within each bin is the remaining approximation to the distribution inside that interval.
 
 ## Experiment
 
