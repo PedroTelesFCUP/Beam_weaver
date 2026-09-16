@@ -27,7 +27,7 @@ q_{\theta_h}(Z_{t,h}\mid X_{t,h})^{m_{t,h}},
 m_{t,h}\in\{0,1\}.
 ```
 
-At interaction $t$, the probability Beam Weaver assigns to the binned event
+At interaction $t$, the probability Beam Weaver assigns to the respective category/bin label
 $\mathbf{Z_t}$ is the product of all the probabilities predicted
 by each and every active head of their respective outcomes $Z_{t,h}$, given the incident photon energy $E_t$, and any earlier outcomes required to predict their quantity (basically saved quantities already sampled
 within the same interaction).
@@ -37,14 +37,14 @@ to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When
 
 | Symbol | Meaning |
 | :--- | :--- |
-| $\pi_{\Theta}(\mathbf{Z_t}\mid E_t)$ | Final probability assigned by Beam Weaver to the binned collision event $\mathbf{Z}_t$, given the incoming photon energy $E_t$. |
+| $\pi_{\Theta}(\mathbf{Z_t}\mid E_t)$ | Final probability assigned by Beam Weaver to the interaction category and bin labels $\mathbf{Z}_t$, given the incoming photon energy $E_t$. |
 | $\Theta=\{\theta_h\}_{h=1}^{13}$ | Collection of trainable parameter sets for the 13 heads. |
 | $t$ | Interaction index. |
 | $h$ | Head index, from 1 to 13. |
-| $E_t$ | Photon energy immediately before collision $t$. |
+| $E_t$ | Photon energy immediately before interaction $t$. |
 | $\mathbf{Z_t}$ | Categorical representation of each and every stochastic quantities for interaction $t$. |
 | $Z_{t,h}$ | Categorical representation of the stochastic quantity assigned to head $h$, at interaction $t$, when that head is active. |
-| $X_{t,h}$ | Conditioning input supplied to head $h$: the photon energy and any required earlier outcomes within the same collision event. |
+| $X_{t,h}$ | Conditioning input supplied to head $h$: the photon energy and any required earlier outcomes within the same interaction event. |
 | $\theta_h$ | Trainable parameters of head $h$. |
 | $q_{\theta_h}(\cdot\mid X_{t,h})$ | Conditional probability distribution predicted by head $h$ over its output bins. |
 | $q_{\theta_h}(Z_{t,h}\mid X_{t,h})$ | Predicted probability of the particular output bin $Z_{t,h}$. |
@@ -54,7 +54,7 @@ to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When
 
 ### Masked cross-entropy training
 
-Each Monte Carlo simulated interaction quantity is represented by the observed category or the bin frequency. This serves as the input that is used to teach the targets in each disjoint head, according to its assignment.
+For each stochastic quantity, Beam Spinner supplies the observed category or bin label from the simulated interactions, which are used as reference targets to train the corresponding heads. 
 
 The training objective is
 
@@ -84,7 +84,7 @@ D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q}).
 
 The set $\mathcal{G}_h$ contains only the targets for which head $h$ is active; inactive heads therefore do not contribute to the corresponding training loss.
 
-At the event level, taking the negative logarithm of the factorized event probability produces a sum over active heads, this provides a very convenient framework as it allows each head to be trained separatelt. For a fixed target distribution, its entropy does not depend on the model parameters, so minimizing cross-entropy also minimizes KL divergence [1].
+At the event level, taking the negative logarithm of the factorized event probability produces a sum over active heads, this provides a very convenient framework as it allows each head to be trained separately. For a fixed target distribution, its entropy does not depend on the model parameters, so minimizing cross-entropy also minimizes KL divergence [1].
 
 | Symbol | Meaning |
 | :--- | :--- |
@@ -106,10 +106,11 @@ At the event level, taking the negative logarithm of the factorized event probab
 
 ## Method
 
-Beam Spinner recursively generates individual Monte Carlo outcomes for each interaction
-process at a specified photon energy, which are then used by Beam Weaver to learn the probabilities of these outcomes through categorical output heads. The interaction process and the photoelectric subshell are represented directly by their physical categories.
+Beam Spinner recursively generates individual Monte Carlo samples for each interaction
+process at a specified photon energy,  and, where applicable,
+for each atomic subshell.  Beam Weaver uses this samples to learn the probabilities of these outcomes through categorical output heads. 
 
-Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors (to learn their respective uniform distributions), totalling 155,127 trainable parameters. A softmax converts each head's logits into probabilities.
+Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors (given a uniform target distribution, no energy or polar angle input is necessary, the logits are directly compared to the Monte Carlo sampled azimuth frequencies). This totals 155,127 trainable parameters, if default initial binning is used. A softmax converts each head's logits into probabilities.
 
 | Head $h$ | Stochastic quantity | Categories or represented quantity | Physical inputs | Default categories or bins $K_h$ (binning resolution can be increased if sampling is sparse) |
 | :---: | :--- | :--- | :--- | ---: |
@@ -127,7 +128,8 @@ Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, a
 | 12 | Pair positron polar emission angle | $\nu_{pp}^{+}=1-\cos\theta_{pp}^{+}$ | $E,\ 1-f$ | 180 |
 | 13 | Pair positron azimuthal angle | $\phi_{pp}^{+}$ | $E,\ 1-f$ | 36 |
 
-Both polar and azimuthal angles are defined in local frames with the polar axis following the incident photon direction, and later rotated to the lab frame if necessary. Energies are binned in a normalized logarithmic representation; finally, subshell inputs use a five-component one-hot representation [(1,0,0,0,0),(0,1,0,0,0),(0,0,1,0,0),(0,0,0,1,0),(0,0,0,0,1)].
+Both polar and azimuthal angles are defined in local frames with the polar axis following the incident photon direction, and later rotated to the lab frame if necessary for transport. Energies are represented in a logarithmic scale; also, subshell inputs use a five-component one-hot representation [(1,0,0,0,0),(0,1,0,0,0),(0,0,1,0,0),(0,0,0,1,0),(0,0,0,0,1)]. Finally, $E$ and $E'$ are the incident and scattered photon energies; $\tau=E'/E$, and $\tau_{\min}=1/(1+2E/(m_ec^2))$, where $m_ec^2$
+is the electron rest energy. The quantities $T_-$ and $T_+$ are the electron and positron kinetic energies in pair production.
 
 Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities using the appropriate constants.
 
@@ -214,7 +216,7 @@ python -m beamweaver generate --data-dir . --output runs/data
 python -m beamweaver train runs/data/schema_v4_data.npz --output runs/training
 ```
 
-Generation samples individual collisions at fixed photon energies, producing separate training, validation and test samples. Default sample counts are:
+Generation samples individual interactions at fixed photon energies, producing separate training, validation and test samples. Default sample counts are:
 
 | Setting | Default | Count applies separately to |
 | --- | ---: | --- |
