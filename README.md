@@ -111,7 +111,7 @@ process at a specified photon energy, which are then used by Beam Weaver to lear
 
 Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, and 2 learned 36-logit azimuth vectors (to learn their respective uniform distributions), totalling 155,127 trainable parameters. A softmax converts each head's logits into probabilities.
 
-| Head $h$ | Stochastic quantity | Categories or represented quantity | Physical inputs | Default categories or bins $K_h$ |
+| Head $h$ | Stochastic quantity | Categories or represented quantity | Physical inputs | Default categories or bins $K_h$ (binning resolution can be increased if sampling is sparse) |
 | :---: | :--- | :--- | :--- | ---: |
 | 1 | Interaction process | Rayleigh, Compton, photoelectric absorption, pair production | $E$ | 4 |
 | 2 | Rayleigh polar scattering angle | $s_R=\ln[(1-\cos\theta_R)/2]$ | $E$ | 720 |
