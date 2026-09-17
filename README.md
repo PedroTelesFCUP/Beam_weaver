@@ -6,7 +6,7 @@
 
 ## Introduction
 
-Beam Weaver is a proof-of-concept neural network that could be taught how to simulate photon/electron transport, and later infer practically all stochastic quantities in an explicit, recursive manner similar to Monte Carlo.
+Beam Weaver is a proof-of-concept neural network that can be taught how to simulate photon/electron transport, and later infer practically all stochastic quantities in an explicit, recursive manner similar to Monte Carlo.
 
 The idea behind this proof-of-concept is to explore the possibilities of using a neural network framework in Monte Carlo radiation transport, which may eventually lead to improvements in dosimetric calculations. The neural network framework explored by Beam Weaver entails the explicit transport of particles (for now, limited to photon/electron/positron transport) rather than the more common approaches of implicit dosimetric calculations. This architectural choice was deliberate, the idea is to answer the very simple question "can a neural network learn how to transport particles?". As such, Monte Carlo sampling is the ideal teacher, given it can produce an arbitrarily large pool of stochastic outcomes that can be fed into the neural network. Somewhat similar approaches have been implemented by other authors [1,2].
 
