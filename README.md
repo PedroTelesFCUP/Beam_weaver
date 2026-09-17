@@ -128,7 +128,7 @@ Beam Weaver contains 13 disjoint heads, 11 two-hidden-layer 64-unit SiLU MLPs, a
 | 12 | Pair positron polar emission angle | $\nu_{pp}^{+}=1-\cos\theta_{pp}^{+}$ | $E,\ 1-f$ | 180 |
 | 13 | Pair positron azimuthal angle | $\phi_{pp}^{+}$ | $E,\ 1-f$ | 36 |
 
-Both polar and azimuthal angles are defined in local frames with the polar axis following the incident photon direction, and later rotated to the lab frame if necessary for transport. Energies are represented in a logarithmic scale; also, subshell inputs use a five-component one-hot representation [(1,0,0,0,0),(0,1,0,0,0),(0,0,1,0,0),(0,0,0,1,0),(0,0,0,0,1)]. Finally, $E$ and $E'$ are the incident and scattered photon energies; $\tau=E'/E$, and $\tau_{\min}=1/(1+2E/(m_ec^2))$, where $m_ec^2$
+Both polar and azimuthal angles are defined in local frames with the polar axis following the incident photon direction, and later rotated to the lab frame if necessary for transport. Energies are represented in a logarithmic scale; also, subshell inputs use a five-component one-hot representation [(1,0,0,0,0),(0,1,0,0,0),(0,0,1,0,0),(0,0,0,1,0),(0,0,0,0,1)]. Finally, $E$ and $E'$ are the incident and scattered photon energies; and for Compton, $\tau=E'/E$, and $\tau_{\min}=1/(1+2E/(m_ec^2))$, where $m_ec^2$
 is the electron rest energy. The quantities $T_-$ and $T_+$ are the electron and positron kinetic energies in pair production.
 
 Each head learns a categorical distribution; continuous variables are sampled within the selected bin and transformed back to physical quantities using the appropriate constants.
