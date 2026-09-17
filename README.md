@@ -6,7 +6,11 @@
 
 ## Introduction
 
-Beam Weaver began as a proof-of-concept neural network that could be taught how to simulate photon/electron transport. Initially, the developed architecture involved  a Soft Actor–Critic agent, but training revealed that the previously supervised physics head used to kickstart the agent already accurately reproduced the photon transport, generating complete recursive showers without the need for reinforcement updates.  This shifted the focus from a reward-driven reinforcement learning agent to a direct framework, learning the local stochastic transition kernels directly from the Monte Carlo sampling. The mathematical framework also favoured this approach[1]. After the teaching process, Beam Weaver’s photon-electron showers are generated recursively just like Monte Carlo, strictly from values inferred by the  neural network heads, while imposing deterministic physics conservation laws. Beam Weaver was trained using *Beam Spinner*, a self-developed Python Monte Carlo code for photon and electron transport in liquid water (1 keV–10 MeV), largely inspired by the PENELOPE code [2]. Beam Spinner can sample photon free paths, Rayleigh, Compton, photoelectric and pair events, using EPDL cross-sections and tabular coherent and incoherent scattering functions [3]; and simulate electron CSDA transport using EPDL stopping power tables. 
+Beam Weaver is a proof-of-concept neural network that could be taught how to simulate photon/electron transport, and later infer practically all stochastic quantities in an explicit, recursive manner similar to Monte Carlo.
+
+The idea behind this proof-of-concept is to explore the possibilities of using a neural network framework in Monte Carlo radiation transport, which may eventually lead to improvements in dosimetric calculations. The neural network framework explored by Beam Weaver entails the explicit transport of particles (for now, limited to photon/electron/positron transport) rather than the more common approaches of implicit dosimetric calculations. This architectural choice was deliberate, the idea is to answer the very simple question "can a neural network learn how to transport particles?". As such, Monte Carlo sampling is the ideal teacher, given it can produce an arbitrarily large pool of stochastic outcomes that can be fed into the neural network. Somewhat similar approaches have been implemented by other authors [1,2].
+
+Initially, the developed architecture involved  a Soft Actor–Critic agent, but training revealed that the previously supervised physics head used to kickstart the agent already accurately reproduced the photon transport, generating complete recursive showers without the need for reinforcement updates.  This shifted the focus from a reward-driven reinforcement learning agent to a direct framework, learning the local stochastic transition kernels directly from the Monte Carlo sampling. The mathematical framework also favoured this approach [3]. After the teaching process, Beam Weaver’s photon-electron showers are generated recursively just like Monte Carlo, strictly from values inferred by the  neural network heads, while imposing deterministic physics conservation laws. Beam Weaver was trained using *Beam Spinner*, a self-developed Python Monte Carlo code for photon and electron transport in liquid water (1 keV–10 MeV), largely inspired by the PENELOPE code [4]. Beam Spinner can sample photon free paths, Rayleigh, Compton, photoelectric and pair events, using EPDL cross-sections and tabular coherent and incoherent scattering functions [5, 6]; and simulate electron CSDA transport using ESTAR stopping power tables [7]. 
 
 After training, In its current form, Beam Weaver can successfully transport photons in a liquid water phantom with energies ranging from 1 keV to 10 MeV. Practically all stochastic quantities are inferred (interaction choice, photon shells in the case of photoelectric events, scattering polar and azimuth photon and electron angles, shared kinetic energy in pair production), totalling 13 inferred quantities, each with its own head, while exponential free path sampling and electron transport still use Beam Spinner’s classical Monte Carlo approach.
 
@@ -81,7 +85,7 @@ D_{\mathrm{KL}}(\mathbf{p}\Vert\mathbf{q}).
 
 The set $\mathcal{G}_h$ contains only the targets for which head $h$ is active; inactive heads therefore do not contribute to the corresponding training loss.
 
-At the event level, taking the negative logarithm of the factorized event probability produces a sum over active heads, this provides a very convenient framework as it allows each head to be trained separately. For a fixed target distribution, its entropy does not depend on the model parameters, so minimizing cross-entropy also minimizes KL divergence [1].
+At the event level, taking the negative logarithm of the factorized event probability produces a sum over active heads, this provides a very convenient framework as it allows each head to be trained separately. For a fixed target distribution, its entropy does not depend on the model parameters, so minimizing cross-entropy also minimizes KL divergence [3].
 
 | Symbol | Meaning |
 | :--- | :--- |
@@ -281,11 +285,19 @@ The project code is licensed under the [Apache License, Version 2.0](LICENSE). S
 
 ## References
 
-[1] J. S. Bridle, “Probabilistic Interpretation of Feedforward Classification Network Outputs,” *Neurocomputing* (1990). [doi:10.1007/978-3-642-76153-9_28](https://doi.org/10.1007/978-3-642-76153-9_28).
+[1] Badiali, C., Bilbao, P. J., Cruz, F., and Silva, L. O. (2022). “Machine-learning-based models in particle-in-cell codes for advanced physics extensions.” Journal of Plasma Physics, 88(6), 895880602. DOI: 10.1017/S0022377822001180. This concerns a neural replacement for part of a Compton-scattering module in OSIRIS—not a complete learned photon-transport engine.
 
-[2] F. Salvat, *PENELOPE-2018: A Code System for Monte Carlo Simulation of Electron and Photon Transport*, OECD/NEA (2019). [doi:10.1787/32da5043-en](https://doi.org/10.1787/32da5043-en).
+[2] Farmer, J. A., Murray, A., Krotz, J., and McClarren, R. G. (2025). “Generative Monte Carlo Sampling for Constant-Cost Particle Transport.” arXiv preprint, 2512.13965. DOI: 10.48550/arXiv.2512.13965. This learns cell-exit distributions while bypassing intermediate scattering histories, rather than learning individual interactions as Beam Weaver does.
 
-[3] D. E. Cullen, J. H. Hubbell and L. Kissel, *EPDL97: The Evaluated Photon Data Library, ’97 Version* (1997). [doi:10.2172/295438](https://doi.org/10.2172/295438). J. H. Hubbell et al., “Atomic form factors, incoherent scattering functions, and photon scattering cross sections,” *Journal of Physical and Chemical Reference Data* **4**, 471–538 (1975). [doi:10.1063/1.555523](https://doi.org/10.1063/1.555523).
+[3] J. S. Bridle, “Probabilistic Interpretation of Feedforward Classification Network Outputs,” *Neurocomputing* (1990). [doi:10.1007/978-3-642-76153-9_28](https://doi.org/10.1007/978-3-642-76153-9_28).
+
+[4] F. Salvat, *PENELOPE-2018: A Code System for Monte Carlo Simulation of Electron and Photon Transport*, OECD/NEA (2019). [doi:10.1787/32da5043-en](https://doi.org/10.1787/32da5043-en).
+
+[5] D. E. Cullen, J. H. Hubbell and L. Kissel, *EPDL97: The Evaluated Photon Data Library, ’97 Version* (1997). [doi:10.2172/295438](https://doi.org/10.2172/295438). 
+
+[6] J. H. Hubbell et al., “Atomic form factors, incoherent scattering functions, and photon scattering cross sections,” *Journal of Physical and Chemical Reference Data* **4**, 471–538 (1975). [doi:10.1063/1.555523](https://doi.org/10.1063/1.555523).
+
+[7] Berger, M.J., Coursey, J.S., Zucker, M.A., and Chang, J. (2005). ESTAR, PSTAR, and ASTAR: Computer Programs for Calculating Stopping-Power and Range Tables for Electrons, Protons, and Helium Ions (version 1.2.3). National Institute of Standards and Technology, Gaithersburg, MD. Available online at NIST STAR Database.
 
 Beam Spinner’s transport and sampling scheme draws substantially on the published PENELOPE algorithms; the author gratefully acknowledges Francesc Salvat, José M. Fernández-Varea, Josep Sempau and the wider PENELOPE development team.
 
