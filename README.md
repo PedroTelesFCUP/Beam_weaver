@@ -152,13 +152,13 @@ After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic 
 
 ## Interpretation and limitations
 
-For the time being, Beam Weaver's geometry has been deliberately made very simple, with simple monochromatic, monodirectional 10x10 cm$^2$ beams impinging on a 100x100x100 cm$^3$ water phantom. For dose tallying, 100 depth slabs, 1 cm thick, are used. Beam Weaver and Beam Spinner tally Arrays deposited energy, rather than absorbed dose.
+For the time being, Beam Weaver's geometry has been deliberately made very simple, with simple monochromatic, monodirectional 10x10 $\mathbf{cm^2}$ beams impinging on a 100x100x100 $\mathbf{cm^3$ water phantom. For dose tallying, 100, 1 cm thick, depth splabs are used. Beam Weaver and Beam Spinner tally deposited energy, rather than absorbed dose.
 
-Beam Spinner's MC1–MC2 difference is used to illustrate sampling variability and how it compares, even if qualitatively to Beam Weaver's inferrence.
+Beam Spinner's MC1–MC2 difference is used to illustrate sampling variability and how it compares, even if qualitatively, to Beam Weaver's inferrence.
 
 As previously mentioned, free paths and electron transport (and actual energy deposition) are still computed with conventional Monte Carlo.
 
-Future steps incplude comparison against PENELOPE, implementing electron/positron transport dedicated heads, variance reduction techniques, and inferrence speed-up algorithms. Beam Weaver remains practical as a proof-of-concept and does not claim to improve sampling at the moment.
+Future steps include comparison against PENELOPE, implementing electron/positron transport dedicated heads, variance reduction techniques, and inferrence speed-up algorithms. Beam Weaver remains practical as a proof-of-concept and does not claim to improve sampling at the moment.
 
 
 
