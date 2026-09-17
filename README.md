@@ -285,9 +285,9 @@ The project code is licensed under the [Apache License, Version 2.0](LICENSE). S
 
 ## References
 
-[1] Badiali, C., Bilbao, P. J., Cruz, F., and Silva, L. O. (2022). “Machine-learning-based models in particle-in-cell codes for advanced physics extensions.” Journal of Plasma Physics, 88(6), 895880602. DOI: 10.1017/S0022377822001180. This concerns a neural replacement for part of a Compton-scattering module in OSIRIS—not a complete learned photon-transport engine.
+[1] Badiali, C., Bilbao, P. J., Cruz, F., and Silva, L. O. (2022). “Machine-learning-based models in particle-in-cell codes for advanced physics extensions.” Journal of Plasma Physics, 88(6), 895880602. [doi: 10.1017/S0022377822001180](https://doi.org/10.1017/S0022377822001180). 
 
-[2] Farmer, J. A., Murray, A., Krotz, J., and McClarren, R. G. (2025). “Generative Monte Carlo Sampling for Constant-Cost Particle Transport.” arXiv preprint, 2512.13965. DOI: 10.48550/arXiv.2512.13965. This learns cell-exit distributions while bypassing intermediate scattering histories, rather than learning individual interactions as Beam Weaver does.
+[2] Farmer, J. A., Murray, A., Krotz, J., and McClarren, R. G. (2025). “Generative Monte Carlo Sampling for Constant-Cost Particle Transport.” arXiv preprint, 2512.13965. doi: [10.48550/arXiv.2512.13965](https://doi.org/10.48550/arXiv.2512.13965). 
 
 [3] J. S. Bridle, “Probabilistic Interpretation of Feedforward Classification Network Outputs,” *Neurocomputing* (1990). [doi:10.1007/978-3-642-76153-9_28](https://doi.org/10.1007/978-3-642-76153-9_28).
 
