@@ -28,12 +28,9 @@ m_{t,h}\in\{0,1\}.
 ```
 
 At interaction $t$, the probability Beam Weaver assigns to the respective category/bin label
-$\mathbf{Z_t}$ is the product of all the probabilities predicted
-by each and every active head of their respective outcomes $Z_{t,h}$, given the incident photon energy $E_t$, and any earlier outcomes required to predict their quantity (basically saved quantities already sampled
-within the same interaction).
+$\mathbf{Z_t}$ is the product of all the probabilities, predicted by each and every active head, of their respective outcomes $Z_{t,h}$, given the incident photon energy $E_t$; and the atomic shell, the sampled pair-production energy fraction, when necessary. 
 
-The binary mask $m_{t,h}$ serves to activate the heads $h$ applicable
-to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When $m_{t,h}=0$, $q^0=1$.
+The binary mask $m_{t,h}$ serves to activate the heads $h$ applicable to the interaction. It's a simple binary value, when $m_{t,h}=1$,  $q^1=q$. When $m_{t,h}=0$, $q^0=1$.
 
 | Symbol | Meaning |
 | :--- | :--- |
@@ -153,6 +150,16 @@ After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic 
 
 
 
+## Interpretation and limitations
+
+For the time being, Beam Weaver's geometry has been deliberately made very simple, with simple monochromatic, monodirectional 10x10 cm$^2$ beams impinging on a 100x100x100 cm$^3$ water phantom. For dose tallying, 100 depth slabs, 1 cm thick, are used. Beam Weaver and Beam Spinner tally Arrays deposited energy, rather than absorbed dose.
+
+Beam Spinner's MC1–MC2 difference is used to illustrate sampling variability and how it compares, even if qualitatively to Beam Weaver's inferrence.
+
+As previously mentioned, free paths and electron transport (and actual energy deposition) are still computed with conventional Monte Carlo.
+
+Future steps incplude comparison against PENELOPE, implementing electron/positron transport dedicated heads, variance reduction techniques, and inferrence speed-up algorithms. Beam Weaver remains practical as a proof-of-concept and does not claim to improve sampling at the moment.
+
 
 
 ## Installation
@@ -261,13 +268,6 @@ python -m beamweaver validate --reference --data-dir .
 
 The first command compares learned distributions with reference samples; the second checks reference angular samplers against their analytic targets. Use `python -m beamweaver <command> --help` for all available controls.
 
-## Interpretation and limitations
-
-The fixed phantom spans x,y = −50…50 cm and z = 0…100 cm, with a uniform 10 × 10 cm² incident photon field. Its 100 depth slabs are 1 cm thick. Arrays named `dose` contain **deposited energy in MeV**, not absorbed dose in Gy. Absolute dosimetry requires mass and source normalization. Report figures normalize each depth profile to its own maximum and compare shape.
-
-The MC1–MC2 difference illustrates sampling variability; it is not a confidence interval. Execution auditing checks covered photon-sampler calls and energy accounting, rather than establishing physical accuracy. Electron/positron transport uses continuous slowing down and simplified bremsstrahlung; positrons use electron stopping powers and annihilate at rest. The combined pair/triplet channel uses pair-event kinematics. These approximations require assessment against a trusted transport code for the intended application.
-
-Run regression checks with `python -m unittest discover -s tests -v`. Neural checks require PyTorch; optional checks against an original source file require that file. Tests report unavailable prerequisites as skips. See `tests/README.md` for coverage.
 
 ## Citation, history and license
 
