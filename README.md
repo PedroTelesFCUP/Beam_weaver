@@ -156,7 +156,7 @@ After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic 
 
 ## Interpretation and limitations
 
-For the time being, Beam Weaver's geometry has been deliberately made very simple, with simple monochromatic, monodirectional 10x10 $\mathbf{cm^2}$ beams impinging on a 100x100x100 $\mathbf{cm^3$ water phantom. For dose tallying, 100, 1 cm thick, depth splabs are used. Beam Weaver and Beam Spinner tally deposited energy, rather than absorbed dose.
+For the time being, Beam Weaver's geometry has been deliberately made very simple, with simple monochromatic, monodirectional 10x10 $\mathbf{cm^2}$ beams impinging on a 100x100x100 $\mathbf{cm^3}$ water phantom. For dose tallying, 100, 1 cm thick, depth splabs are used. Beam Weaver and Beam Spinner tally deposited energy, rather than absorbed dose.
 
 Beam Spinner's MC1–MC2 difference is used to illustrate sampling variability and how it compares, even if qualitatively, to Beam Weaver's inferrence.
 
