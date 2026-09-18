@@ -36,7 +36,7 @@ HEADER = r"""
 ║  | |_) |  __/ (_| | | | | | |   \ V  V /  __/ (_| |\ V /  __/ |   ║
 ║  |____/ \___|\__,_|_| |_| |_|    \_/\_/ \___|\__,_| \_/ \___|_|   ║
 ║                                                                   ║
-║                        v {version:<41}║
+║                        v {version:<41}                            ║
 ║                                                                   ║
 ║  Learned-kernel Monte Carlo photon transport                      ║
 ║  Supervised stochastic transport kernel                           ║
