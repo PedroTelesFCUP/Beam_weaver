@@ -167,8 +167,9 @@ def train_factor(policy, factor, ds_path, epochs=None, lr=None,
         n_tr = tr[1].shape[0]
         print(f"  [v4:train] head={factor} module={attr} "
               f"in={BW4_FACTOR_HEADS[factor][1]} out={outd} "
-              f"train_{'events' if per_event else 'conds'}={n_tr} "
-              f"val={va[1].shape[0]} opt=Adam lr={lr} epochs<={epochs}")
+              f"train_{'events' if per_event else 'reference_sets'}={n_tr} "
+              f"validation_{'events' if per_event else 'reference_sets'}="
+              f"{va[1].shape[0]} opt=Adam lr={lr} epochs<={epochs}")
     best, best_state, best_ep, bad, curve = None, None, -1, 0, []
 
     def _grouped_eval(X, T, M):

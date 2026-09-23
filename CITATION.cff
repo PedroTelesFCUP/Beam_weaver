@@ -1,15 +1,13 @@
 cff-version: 1.2.0
 title: Beam Weaver
-message: "If you use Beam Weaver, please cite the software record below."
+message: "If you use Beam Weaver, cite the specific version and record its Git commit."
 type: software
 authors:
   - family-names: Teles
     given-names: Pedro
     orcid: "https://orcid.org/0000-0003-2705-7077"
     affiliation: "Department of Physics and Astronomy, Faculty of Sciences, University of Porto"
-version: 0.4.0
-doi: 10.5281/zenodo.22739031
-date-released: 2026-09-13
+version: 0.4.1
 license: Apache-2.0
 repository-code: "https://github.com/PedroTelesFCUP/Beam_weaver"
 abstract: >
@@ -19,6 +17,13 @@ abstract: >
   training, audited learned transport and comparison tools. Free-flight
   sampling and approximate electron/positron transport use explicit physics.
 references:
+  - type: software
+    title: "Beam Weaver"
+    authors:
+      - family-names: Teles
+        given-names: Pedro
+    version: 0.4.0
+    doi: 10.5281/zenodo.22739031
   - type: software
     title: "Beam Weaver"
     authors:
