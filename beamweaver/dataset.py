@@ -36,6 +36,7 @@ import math
 from pathlib import Path
 import numpy as np
 import random
+import time
 from .physics import sample_compton_event
 from .physics import sample_pair_event
 from .physics import sample_photoelectric_event_for_shell
@@ -151,6 +152,54 @@ def _factor_conditions(factor, E_grid, thr):
     return out
 
 
+def _print_energy_values(label, values):
+    """Show fixed sampling energies in compact, readable console rows."""
+    print(f"  {label} (MeV, rounded to six decimals):", flush=True)
+    for start in range(0, len(values), 8):
+        row = ", ".join(f"{energy:.6f}" for energy in values[start:start + 8])
+        print(f"    {start + 1:2d}–{min(start + 8, len(values)):2d}: {row}",
+              flush=True)
+
+
+def _print_sampling_plan(grids, threshold, grid_stride):
+    """Describe the actual sampling points and why the reference-set totals differ."""
+    print("\n  [generate] Photon energy immediately before the interaction "
+          "(fixed sampling values, not energy bins):", flush=True)
+    if grid_stride == 1:
+        print("  [train] 69 energies: 64 logarithmically spaced from 1 keV "
+              "to 10 MeV, plus five near the pair threshold.", flush=True)
+        _print_energy_values("64 logarithmically spaced training energies",
+                             np.geomspace(BW4_EMIN_MEV, BW4_EMAX_MEV, 64))
+        print("  Five additional training energies (MeV): "
+              + ", ".join(f"{e:.3f}" for e in BW4_PAIR_TRAIN_EXTRA),
+              flush=True)
+        print("  [val] 63 midpoint energies between adjacent values of the "
+              "64-point logarithmic training grid.", flush=True)
+    else:
+        print(f"  [generate] reduced smoke grid (every {grid_stride}th "
+              "canonical point; near-threshold training points retained).",
+              flush=True)
+        _print_energy_values("Training energies actually sampled", grids["train"])
+        print(f"  [val] {len(grids['val'])} midpoint energies selected "
+              "for this smoke run.", flush=True)
+    print(f"  [test] {len(grids['test'])} selected energies (MeV): "
+          + ", ".join(f"{e:g}" for e in grids["test"]), flush=True)
+    sets_per_energy = 4 + N_SHELLS
+    print("  Each energy has 1 interaction-choice + 1 shell-choice + "
+          f"1 Rayleigh + 1 Compton + {N_SHELLS} photoelectric-shell "
+          f"= {sets_per_energy} reference sampling sets.", flush=True)
+    print(f"  Pair production adds 1 set where E > {threshold:.6f} MeV.",
+          flush=True)
+    for role, energies in grids.items():
+        n_energies = len(energies)
+        n_pair = int(np.count_nonzero(energies > threshold))
+        print(f"  [{role}] {n_energies} × {sets_per_energy} + {n_pair} "
+              f"pair = {n_energies * sets_per_energy + n_pair} "
+              "reference sampling sets.", flush=True)
+    print("  One set samples one stochastic quantity at one fixed photon "
+          "energy; photoelectric sets also fix the shell.\n", flush=True)
+
+
 def _estimate_null_kl(n, S=BW4_S_SUB):
     if n > 2048:
         return (S - 1) / (2.0 * n)
@@ -205,9 +254,21 @@ def generate_dataset(data, out="schema_v4_data.npz", M=None,
             "comp": lambda E, s, m, sd: sample_compton_training_data(E, m, data, sd),
             "photo": lambda E, s, m, sd: sample_photoelectric_training_data(E, s, m, data, sd),
             "pair": lambda E, s, m, sd: sample_pair_training_data(E, m, data, sd)}
+    if verbose:
+        _print_sampling_plan(grids, thr, grid_stride)
+    labels = {"process": "Interaction choice", "shell": "Shell choice",
+              "ray": "Rayleigh", "comp": "Compton",
+              "photo": "Photoelectric by shell", "pair": "Pair production"}
     for role in ("train", "val", "test"):
         for factor in ("process", "shell", "ray", "comp", "photo", "pair"):
-            for (E, sh) in _factor_conditions(factor, grids[role], thr):
+            conditions = _factor_conditions(factor, grids[role], thr)
+            if verbose:
+                print(f"  [{role}] {labels[factor]}: sampling "
+                      f"{len(conditions)} fixed-energy"
+                      f"{'-and-shell' if factor == 'photo' else ''} sets "
+                      f"({M[factor]:,} MC draws per set)...", flush=True)
+            last_progress = time.monotonic()
+            for i, (E, sh) in enumerate(conditions, 1):
                 tag = f"E{E:.6e}" + ("" if sh is None else f"|H{sh}")
                 grp = gens[factor](E, sh, M[factor],
                                    deterministic_seed(role, factor, tag))
@@ -215,10 +276,22 @@ def generate_dataset(data, out="schema_v4_data.npz", M=None,
                     arrays[f"{role}|{factor}|{tag}|{fld}"] = np.asarray(arr)
                 mani["groups"].setdefault(role, {}).setdefault(
                     factor, []).append(tag)
+                if verbose and time.monotonic() - last_progress >= 15:
+                    print(f"  [{role}] {labels[factor]}: {i}/{len(conditions)} "
+                          "sets sampled...", flush=True)
+                    last_progress = time.monotonic()
+            if verbose:
+                print(f"  [{role}] {labels[factor]}: "
+                      f"{len(conditions)}/{len(conditions)} sets complete.",
+                      flush=True)
         if verbose:
-            print(f"  [v4:data] role={role}: "
-                  f"{sum(len(v) for v in mani['groups'][role].values())} "
-                  f"sample groups generated (one photon energy, and one shell for photoelectric sampling)")
+            total = sum(len(v) for v in mani["groups"][role].values())
+            print(f"  [{role}] complete: {len(grids[role])} fixed photon "
+                  f"energies, {total} reference sampling sets.\n", flush=True)
+    if verbose:
+        print("  [generate] Deriving OUTPUT bins for interaction angles "
+              "and energy fractions from training samples, then checking "
+              "the representation using validation samples.", flush=True)
     edges = derive_edges(arrays, grids["train"], thr, verbose=verbose)
     edges, sanity = edge_sanity_check(arrays, edges, grids, thr,
                                           verbose=verbose)
@@ -246,6 +319,8 @@ def generate_dataset(data, out="schema_v4_data.npz", M=None,
                                for c in csvs}}
     arrays["__bw4_meta__"] = np.frombuffer(
         json.dumps(meta).encode(), dtype=np.uint8)
+    if verbose:
+        print(f"  [generate] writing compressed dataset -> {out}", flush=True)
     np.savez_compressed(out, **arrays)
     with open(out, "rb") as fh:
         mani["npz_sha256"] = hashlib.sha256(fh.read()).hexdigest()

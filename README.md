@@ -94,9 +94,9 @@ At the event level, taking the negative logarithm of the factorized event probab
 | $h$ | Head index, from 1 to 13. |
 | $\theta_h$ | Trainable parameters of head $h$. |
 | $\mathcal{G}_h$ | Set of training-target indices for which head $h$ is active. |
-| $g$ | Index identifying an individual event or a condition group. |
+| $g$ | Index identifying an individual event or a reference sampling set (one sampled quantity at one fixed incident photon energy, plus a fixed shell where relevant). |
 | $X_{g,h}$ | Conditioning input supplied to head $h$ for target $g$. |
-| $\widehat{\mathbf{p}}_{g,h}$ | Beam Spinner target probability vector: empirical bin frequencies for a condition group, or a one-hot vector for an individual event. |
+| $\widehat{\mathbf{p}}_{g,h}$ | Beam Spinner target probability vector: empirical bin frequencies for a reference sampling set, or a one-hot vector for an individual event. |
 | $\mathbf{q_{\theta_h}} (\cdot \mid X _{g,h} )$ | Probability vector predicted by head $h$ for the given conditioning input. |
 | $K_h$ | Number of output bins for head $h$. |
 | $k$ | Output-bin index, from 1 to $K_h$. |
@@ -148,7 +148,7 @@ After Beam Spinner taught Beam Weaver; 50,000 monodirectional and monochromatic 
 
 ## Results
 
-[Results gallery](results/README.md) presents the **v0.4.0** results at **0.1, 1, 2, 5 and 10 MeV**: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. The figures present: depth dose, Compton angle, photoelectric angle and shell selection, pair kinetic-energy sharing, and interaction fractions.
+[Results gallery](results/README.md) presents the **v0.4.0** results at **0.1, 1, 2, 5 and 10 MeV**: 50,000 primary photons per simulation, two independent Beam Spinner runs, and one Beam Weaver run. Available figures cover depth dose, Compton and photoelectric angles, shell selection, pair kinetic-energy sharing and interaction fractions where the saved data support them.
 
 ![5 MeV depth-dose comparison](results/figures/5MeV/pdd.png)
 
@@ -201,7 +201,7 @@ The installed `beamweaver` command and `python Beam_weaver_0_4_0.py` open the sa
 | 5 | Validate factors or reference samplers |
 | 6 | Exit |
 
-Each operation asks for its inputs and output directory. Help and the menu can be opened without physics tables or a checkpoint.
+Each operation explains its purpose and default sampling or training choices before asking for inputs. Help and the menu can be opened without physics tables or a checkpoint. By default, each operation creates a new directory such as `runs/generate-20260923-v1`; the next run of that operation on the same UTC date uses `v2`, then `v3`. These suffixes count runs **for that day**, not Beam Weaver software versions. An explicit `--output` chooses a directory instead; `--resume` continues the specified training run.
 
 ## Water data
 
@@ -220,14 +220,37 @@ Generation and validation require the first five files. A learned shower require
 
 ## Generate and train
 
-Commands support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create a timestamped directory under `runs`.
+Commands support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create the next available `runs/<command>-YYYYMMDD-vN` directory (UTC date, sequential run number). Dataset and checkpoint basenames are unchanged; command audit records also use a dated `command-YYYYMMDD-vN.json` name.
 
 ```bash
 python -m beamweaver generate --data-dir . --output runs/data
 python -m beamweaver train runs/data/schema_v4_data.npz --output runs/training
 ```
 
-Generation samples individual interactions at fixed photon energies, producing separate training, validation and test samples. Default sample counts are:
+### What the generator samples
+
+Beam Spinner generates reference interactions at **fixed incident photon energies**: the energy of the photon immediately before the interaction being sampled. The default grids are:
+
+| Dataset split | Incident photon energy values (MeV) | Number of values |
+| --- | --- | ---: |
+| Training | 64 geometrically spaced values from 0.001 to 10, plus **1.023, 1.030, 1.050, 1.075 and 1.100** near the pair-production threshold | 69 |
+| Validation | Geometric midpoints between neighboring values of the original 64-point grid | 63 |
+| Test | **0.010, 0.020, 0.050, 0.100, 0.5, 1, 2, 5 and 10** | 9 |
+
+The 64 geometrically spaced training values, rounded here to six decimal places, are:
+
+| Positions | Incident energies (MeV) |
+| --- | --- |
+| 1–16 | 0.001000, 0.001157, 0.001340, 0.001551, 0.001795, 0.002077, 0.002404, 0.002783, 0.003221, 0.003728, 0.004314, 0.004994, 0.005780, 0.006690, 0.007743, 0.008962 |
+| 17–32 | 0.010372, 0.012005, 0.013895, 0.016082, 0.018614, 0.021544, 0.024936, 0.028861, 0.033405, 0.038664, 0.044750, 0.051795, 0.059948, 0.069386, 0.080309, 0.092951 |
+| 33–48 | 0.107584, 0.124520, 0.144122, 0.166810, 0.193070, 0.223463, 0.258642, 0.299358, 0.346483, 0.401028, 0.464159, 0.537228, 0.621800, 0.719686, 0.832981, 0.964111 |
+| 49–64 | 1.115884, 1.291550, 1.494869, 1.730196, 2.002568, 2.317818, 2.682696, 3.105013, 3.593814, 4.159562, 4.814372, 5.572265, 6.449467, 7.464760, 8.639884, 10.000000 |
+
+These are **sampling points**, not bins of incident energy. The heads receive photon energy as a continuous logarithmically scaled input within 0.001–10 MeV. Separately, the generator derives bin boundaries for continuous *interaction outcomes*, such as scattering angles and energy fractions, using training samples. The validation samples check that representation before training. Test samples are generated separately, but **10 MeV** is a training-grid endpoint and **0.100 MeV** coincides with a validation midpoint. The test grid is therefore not exclusively unseen energies.
+
+At each incident energy the generator prepares nine **reference sampling sets**: one each for interaction choice, shell choice, Rayleigh and Compton outcomes, and five photoelectric sets, one per shell. Above the pair threshold it adds one pair-production set. Each set is a batch of reference draws for its fixed energy, stochastic quantity and, where applicable, shell. The full grids therefore have **69 × 9 + 21 = 642** training sets, **63 × 9 + 16 = 583** validation sets, and **9 × 9 + 3 = 84** test sets. These totals count sets, not individual interactions or bins. The pair threshold is $2m_ec^2 \approx 1.022$ MeV; only energies with pair sampling support contribute to the last term. The reduced `--smoke` grids have different totals.
+
+Default samples **per set** are:
 
 | Setting | Default | Count applies separately to |
 | --- | ---: | --- |
@@ -238,6 +261,8 @@ Generation samples individual interactions at fixed photon energies, producing s
 These are separate counts, not a combined event total. `--smoke` reduces the grids and counts for execution checks. Low statistics can leave representation checks unevaluable; a smoke dataset is not sufficient evidence of physical accuracy.
 
 Generation writes `schema_v4_data.npz`, its manifest and `schema_v4_generator_spec.json`. The NPZ contains samples, category counts, bin edges and metadata. The manifest records the actual generated data; the generator specification describes canonical rules and defaults. Reuse the NPZ across training sessions.
+
+The 13 disjoint heads train one at a time with Adam and cross-entropy. For the default settings, the grouped-distribution heads have **up to 400 epochs**, while the four pair electron/positron direction heads trained from individual events have **up to 20 epochs**. After each epoch, the program evaluates cross-entropy on the separately generated validation samples, stops early if it ceases to improve, and restores the weights with the **lowest validation cross-entropy**. These are upper limits, not a promise that every head runs for that many epochs. A lower validation loss selects a checkpoint; test samples remain separate from that selection.
 
 All-head training saves individual `v040_head_*.pt` checkpoints, a training manifest and the combined `v040_policy.pt`. Resume a matching dataset/run pair to restore completed heads and train those remaining:
 
@@ -263,7 +288,7 @@ python -m beamweaver report runs/comparison
 
 An audited run saves `dose.npy`, `summary.json`, execution records and, when available, `shower3d.png` showing photon tracks from up to 40 primary histories.
 
-Comparison runs **MC1 and MC2 with independent random streams**, then Beam Weaver. Defaults are 0.05, 0.5, 1 and 5 MeV, with 2,000 primary histories per simulation at each energy. It saves per-simulation energy-deposition arrays and `comparison.json`, including interaction fractions, elapsed time and throughput. `report` creates the comparison figures from those saved outputs.
+Comparison runs **MC1 and MC2 with independent random streams**, then Beam Weaver. Defaults are 0.05, 0.5, 1 and 5 MeV, with **2,000 primary photon histories per selected energy per method** (MC1, MC2 and Beam Weaver). For four energies this means 4 × 3 × 2,000 = 24,000 primary histories in total. It saves per-simulation energy-deposition arrays and `comparison.json`, including interaction fractions, elapsed time and throughput. `report` creates the comparison figures from those saved outputs.
 
 ```bash
 python -m beamweaver validate runs/training/v040_policy.pt --data-dir .
@@ -275,7 +300,7 @@ The first command compares learned distributions with reference samples; the sec
 
 ## Citation, history and license
 
-The Zenodo archive for **v0.4.0** is **[10.5281/zenodo.22739031](https://doi.org/10.5281/zenodo.22739031)**. The project’s persistent, all-versions DOI is **[10.5281/zenodo.18994134](https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). The [changelog](CHANGELOG.md) links the preserved earlier releases. The historical version DOIs identify those earlier archives, not version 0.4.0.
+The archived **v0.4.0** has its own DOI, **[10.5281/zenodo.22739031](https://doi.org/10.5281/zenodo.22739031)**; that DOI identifies v0.4.0, not v0.4.1. The project’s persistent, all-versions DOI is **[10.5281/zenodo.18994134](https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). The [changelog](CHANGELOG.md) links the preserved earlier releases. A v0.4.1 version-specific archive DOI can be added after that archive exists.
 
 See [architecture](docs/architecture.md) for the module layout and [contributing](contributing.md) for development guidance.
 

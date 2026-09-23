@@ -9,7 +9,7 @@ Equal-valued settings with different meanings remain independent.
 
 import numpy as np
 
-BW_VERSION = "0.4.0"
+BW_VERSION = "0.4.1"
 
 mec2 = 0.51099895069  # Electron rest energy, MeV.
 PAIR_THRESHOLD_MEV = 2.0 * mec2

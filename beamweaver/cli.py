@@ -5,11 +5,13 @@
 import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from itertools import count
 import json
 import math
 import os
 from pathlib import Path
 import sys
+import textwrap
 
 from .constants import (
     BW_VERSION, BW4_EMIN_MEV, BW4_EMAX_MEV, BW4_M_DEFAULT,
@@ -36,7 +38,7 @@ HEADER = r"""
 ║  | |_) |  __/ (_| | | | | | |   \ V  V /  __/ (_| |\ V /  __/ |   ║
 ║  |____/ \___|\__,_|_| |_| |_|    \_/\_/ \___|\__,_| \_/ \___|_|   ║
 ║                                                                   ║
-║                        v {version:<41}                            ║
+║                            v {version:<10}                           ║
 ║                                                                   ║
 ║  Learned-kernel Monte Carlo photon transport                      ║
 ║  Supervised stochastic transport kernel                           ║
@@ -96,7 +98,7 @@ def _parser():
 
     def output_options(subparser):
         subparser.add_argument("--output", metavar="RUN_DIR",
-                               help="new output directory (default: runs/<command>-<UTC time>)")
+                               help="new output directory (default: runs/<command>-YYYYMMDD-vN, UTC date)")
 
     def data_options(subparser):
         subparser.add_argument("--data-dir", default=".", metavar="DIRECTORY",
@@ -112,14 +114,14 @@ def _parser():
     generate.add_argument("--smoke", action="store_true",
                           help="reduced grid and event counts; retains the data sanity check")
     generate.add_argument("--events", type=_positive_int, metavar="N",
-                          help="events per photon energy for each sampling group; photoelectric events are counted separately for each shell; default preserves group-specific counts")
+                          help="MC draws per reference sampling set (one outcome at one incident energy; photoelectric also fixes a shell); default preserves quantity-specific counts")
 
     generate.add_argument("--categorical-events", type=_positive_int, metavar="N",
-                          help=f"events per photon energy for each of process selection and shell selection (default: {BW4_M_DEFAULT['process']})")
+                          help=f"MC draws at each photon energy for interaction choice and shell choice separately (default: {BW4_M_DEFAULT['process']})")
     generate.add_argument("--continuous-events", type=_positive_int, metavar="N",
-                          help=f"events per photon energy for each of Rayleigh and Compton; photoelectric events per photon energy and shell (default: {BW4_M_DEFAULT['ray']})")
+                          help=f"MC draws at each energy for Rayleigh and Compton separately, and at each energy and shell for photoelectric (default: {BW4_M_DEFAULT['ray']})")
     generate.add_argument("--pair-events", type=_positive_int, metavar="N",
-                          help=f"pair events per photon energy above threshold (default: {BW4_M_DEFAULT['pair']}); group counts override --events")
+                          help=f"pair MC draws per photon energy above threshold (default: {BW4_M_DEFAULT['pair']}); quantity-specific counts override --events")
 
     train = commands.add_parser("train", help="train all heads or one selected head")
     train.add_argument("dataset", help="schema-v4 .npz dataset")
@@ -150,7 +152,7 @@ def _parser():
     compare.add_argument("--energies", type=_energies,
                          default=list(DEFAULT_COMPARISON_ENERGIES), metavar="MEV,...")
     compare.add_argument("--histories", type=_positive_int, default=DEFAULT_COMPARISON_HISTORIES,
-                         help=f"histories per arm and energy (default: {DEFAULT_COMPARISON_HISTORIES})")
+                         help=f"primary photon histories per selected energy per method (MC1, MC2, BeamWeaver; default: {DEFAULT_COMPARISON_HISTORIES})")
     compare.add_argument("--batch", type=_positive_int, default=DEFAULT_INFERENCE_BATCH_SIZE,
                          help=f"BeamWeaver inference batch size (default: {DEFAULT_INFERENCE_BATCH_SIZE})")
 
@@ -228,8 +230,16 @@ def _device(value):
 
 def _new_run_dir(value, command):
     if value is None:
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-        value = Path("runs") / f"{command}-{stamp}"
+        root = Path("runs").expanduser().resolve()
+        root.mkdir(parents=True, exist_ok=True)
+        day = datetime.now(timezone.utc).strftime("%Y%m%d")
+        for version in count(1):
+            path = root / f"{command}-{day}-v{version}"
+            try:
+                path.mkdir()  # Atomic reservation even if two runs start together.
+                return path
+            except FileExistsError:
+                continue
     path = Path(value).expanduser().resolve()
     if path.exists() and (not path.is_dir() or any(path.iterdir())):
         raise FileExistsError(f"Output directory is not empty: {path}; choose a new --output")
@@ -238,10 +248,64 @@ def _new_run_dir(value, command):
 
 
 def _record_command(run_dir, args):
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    path = run_dir / f"command_{stamp}.json"
-    path.write_text(json.dumps({"working_directory": str(Path.cwd()),
-                                "arguments": vars(args)}, indent=2, default=str))
+    day = datetime.now(timezone.utc).strftime("%Y%m%d")
+    for version in count(1):
+        path = run_dir / f"command-{day}-v{version}.json"
+        try:
+            with path.open("x") as fh:
+                json.dump({"working_directory": str(Path.cwd()),
+                           "arguments": vars(args)}, fh, indent=2, default=str)
+            return
+        except FileExistsError:
+            continue
+
+
+def _explain_operation(command):
+    """Explain the selected operation before the interactive questions/CLI run."""
+    explanations = {
+        "generate": (
+            "Beam Spinner will sample individual interaction outcomes at fixed photon "
+            "energies before each collision. The training, validation and test energies "
+            "and sample counts will be shown before sampling starts. The training "
+            "samples also set output-bin boundaries; validation samples check that "
+            "representation. No neural head is trained by this operation."),
+        "train": (
+            "Train 13 separate stochastic heads in 10 stages from the generated "
+            "reference data. By default, nine heads learn sampled outcome "
+            "distributions for up to 400 epochs each; four pair-direction heads "
+            "learn from individual events for up to 20 epochs each. Each epoch "
+            "is evaluated on validation cross-entropy. Training may stop early, "
+            "and the weights with the lowest validation cross-entropy are saved "
+            "for each head. This selection helps limit overfitting; it does not "
+            "establish physical accuracy."),
+        "run": (
+            "Transport primary photons at one selected source energy using the "
+            "learned interaction heads. The audit checks execution provenance "
+            "and energy accounting; free paths and charged-particle transport "
+            "still use the existing physics routines. Results include an "
+            "execution record, summary and deposited-energy tally."),
+        "compare": (
+            "Run two independently seeded Beam Spinner references (MC1 and MC2) "
+            "and Beam Weaver separately at each selected source energy. The "
+            "requested history count applies to EACH method at EACH energy. "
+            "MC1 versus MC2 illustrates sampling variability; a separate "
+            "report command makes figures from the saved arrays."),
+        "validate": (
+            "Choose learned-head diagnostics or reference-sampler checks. "
+            "Learned-head diagnostics compare all 13 heads with fresh Beam Spinner "
+            "samples and save discrepancy metrics and optional figures; they do "
+            "not issue a global physics pass. Reference mode checks the built-in "
+            "angular samplers against their specified analytical targets and "
+            "requires no learned policy."),
+        "report": (
+            "Regenerate figures from the saved comparison summary and dose "
+            "arrays. The simulation data are read from the selected run; "
+            "this command does not repeat any photon histories."),
+    }
+    print("\n" + textwrap.fill(
+        explanations[command], width=79,
+        initial_indent=f"  [{command}] ", subsequent_indent="    ")
+        + "\n", flush=True)
 
 
 def _execute(args):
@@ -252,6 +316,8 @@ def _execute(args):
         _required_file(run_dir / "comparison.json", "Comparison report")
         output = Path(args.output).expanduser().resolve() if args.output else None
         from .reporting import regenerate_reports
+        print(f"  [report] rebuilding figures from {run_dir}; "
+              f"saving to {output or run_dir / 'figures'}.", flush=True)
         regenerate_reports(run_dir, save_dir=output)
         return output or run_dir / "figures"
 
@@ -282,7 +348,23 @@ def _execute(args):
         if args.epochs is not None:
             kwargs["epochs"] = args.epochs
         _record_command(run_dir, args)
+        limits = (f"up to {args.epochs} epochs for each selected head"
+                  if args.epochs is not None else
+                  "up to 400 epochs for nine grouped-target heads; "
+                  "up to 20 for four pair-direction heads")
+        print(f"  [train] dataset: {dataset}\n"
+              f"  [train] epoch limits: {limits}\n"
+              "  [train] each epoch is checked on validation samples; "
+              "the lowest validation cross-entropy checkpoint is retained.",
+              flush=True)
         if args.factor:
+            if not args.resume:
+                print("  [train] a new single-head run saves an incomplete policy; "
+                      "train all heads before running a shower.", flush=True)
+            else:
+                print("  [train] retraining this head in the resumed policy; "
+                      "use the same dataset and binning as the original run.",
+                      flush=True)
             train_factor(policy, args.factor, str(dataset),
                              run_dir=run_dir, **kwargs)
             policy.save_policy(run_dir / "v040_policy.pt")
@@ -307,6 +389,7 @@ def _execute(args):
     data_dir = _data_directory(args.data_dir, command)
     run_dir = _new_run_dir(args.output, command)
     _record_command(run_dir, args)
+    print(f"  [{command}] results directory: {run_dir}", flush=True)
     with _physics_directory(data_dir):
         data = _load_data()
         if command == "generate":
@@ -330,13 +413,22 @@ def _execute(args):
                 if value is not None:
                     counts.update({factor: value for factor in factors})
             kwargs["M"] = counts
-            print(f"  [generate] events per photon energy (photo: per photon energy and shell): {counts}")
+            print("  [generate] MC draws per reference sampling set "
+                  "(one quantity at one photon energy; photoelectric also fixes a shell):\n"
+                  f"             process={counts['process']:,}, shell={counts['shell']:,}, "
+                  f"Rayleigh={counts['ray']:,}, Compton={counts['comp']:,},\n"
+                  f"             photoelectric={counts['photo']:,}, "
+                  f"pair={counts['pair']:,}", flush=True)
             generate_dataset(data, out=str(run_dir / "schema_v4_data.npz"), **kwargs)
             write_generator_spec(str(run_dir / "schema_v4_generator_spec.json"))
             return run_dir
 
         if reference:
             from .validation import validate_reference_samplers
+            print("  [validate] reference-sampler mode: checking sampled angles "
+                  "against the built-in analytical targets; no neural policy is used.\n"
+                  f"  [validate] {args.samples or DEFAULT_REFERENCE_VALIDATION_SAMPLES:,} "
+                  "draws per tested energy and channel.", flush=True)
             report = validate_reference_samplers(
                 data, n_samples=args.samples or DEFAULT_REFERENCE_VALIDATION_SAMPLES)
             (run_dir / "reference_validation.json").write_text(json.dumps(report, indent=2))
@@ -347,6 +439,14 @@ def _execute(args):
         policy = GenerativeTransportPolicy.load_policy(str(checkpoint), device=device)
         if command == "validate":
             from .validation import validate_policy
+            selected = args.energies or [0.02, 0.05, 0.1, 0.5, 1.05, 2.0, 5.0, 10.0]
+            print("  [validate] learned-head mode: 13 heads compared with two "
+                  "fresh MC replicas; discrepancy metrics are diagnostic, "
+                  "without a global pass/fail threshold.\n"
+                  f"  [validate] photon energies (MeV): {', '.join(f'{e:g}' for e in selected)}; "
+                  f"{args.samples or DEFAULT_FACTOR_VALIDATION_SAMPLES:,} "
+                  "samples per energy and shell when applicable, for EACH MC replica.",
+                  flush=True)
             validate_policy(policy, data, energies=args.energies,
                                  M=args.samples or DEFAULT_FACTOR_VALIDATION_SAMPLES,
                                  out_json="validation.json",
@@ -359,10 +459,17 @@ def _execute(args):
                            energy_range=(BW4_EMIN_MEV, BW4_EMAX_MEV))
         if command == "run":
             from .evaluation import evaluate_transport
+            print(f"  [run] {args.histories:,} primary photon histories at "
+                  f"{args.energy:g} MeV.", flush=True)
             evaluate_transport(policy, data, env, args.energy,
                                    args.histories, device=device, save_dir=run_dir)
         elif command == "compare":
             from .evaluation import compare_transport
+            print(f"  [compare] source energies (MeV): "
+                  f"{', '.join(f'{e:g}' for e in args.energies)}\n"
+                  f"  [compare] {args.histories:,} primary photon histories "
+                  "at EACH energy for EACH method (MC1, MC2, BeamWeaver).",
+                  flush=True)
             compare_transport(policy, data, env, args.energies,
                                      args.histories, device=device,
                                      batch=args.batch, save_dir=run_dir)
@@ -398,6 +505,7 @@ def interactive_menu():
                 continue
             command = {"1": "generate", "2": "train", "3": "run",
                        "4": "compare", "5": "validate"}[choice]
+            _explain_operation(command)
             argv = [command]
             if command == "train":
                 dataset = _ask("Dataset", dataset)
@@ -422,16 +530,16 @@ def interactive_menu():
                 if _ask("Reduced smoke dataset? y/N", "N").lower() == "y":
                     argv.append("--smoke")
                 else:
-                    argv.extend(["--categorical-events", _ask("Events per photon energy for each of process selection and shell selection", BW4_M_DEFAULT["process"]),
-                                 "--continuous-events", _ask("Events per photon energy for each of Rayleigh/Compton; photoelectric per energy and shell", BW4_M_DEFAULT["ray"]),
-                                 "--pair-events", _ask("Pair events per photon energy above threshold", BW4_M_DEFAULT["pair"])])
+                    argv.extend(["--categorical-events", _ask("MC draws at each energy for interaction choice AND shell choice separately", BW4_M_DEFAULT["process"]),
+                                 "--continuous-events", _ask("MC draws at each energy for Rayleigh/Compton; photoelectric at each energy AND shell", BW4_M_DEFAULT["ray"]),
+                                 "--pair-events", _ask("Pair MC draws at each energy above threshold", BW4_M_DEFAULT["pair"])])
             elif command == "run":
                 argv.extend(["--energy", _ask("Photon energy (MeV)", DEFAULT_RUN_ENERGY_MEV),
-                             "--histories", _ask("Histories", DEFAULT_RUN_HISTORIES)])
+                             "--histories", _ask("Primary photon histories", DEFAULT_RUN_HISTORIES)])
             elif command == "compare":
                 argv.extend(["--energies", _ask("Energies (MeV, comma separated)",
                                               ",".join(map(str, DEFAULT_COMPARISON_ENERGIES))),
-                             "--histories", _ask("Histories per arm", DEFAULT_COMPARISON_HISTORIES)])
+                             "--histories", _ask("Primary photon histories per energy per method (MC1, MC2, BeamWeaver)", DEFAULT_COMPARISON_HISTORIES)])
             elif command == "validate":
                 argv.extend(["--samples", _ask("MC samples per photon energy (photoelectric: per energy and shell)",
                                               DEFAULT_REFERENCE_VALIDATION_SAMPLES
@@ -464,6 +572,7 @@ def main(argv=None):
     if args.command is None:
         return interactive_menu()
     try:
+        _explain_operation(args.command)
         _execute(args)
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)

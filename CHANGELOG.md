@@ -1,3 +1,33 @@
+# Changes in 0.4.1
+
+- Explain what each menu operation does before collecting inputs, with the
+  reference energy grids, sample counts, training limits and validation choices
+  visible during a run.
+- Describe the generation grid as fixed **incident photon energy values**:
+  64 logarithmically spaced training values plus five near pair threshold,
+  63 validation midpoints and nine explicitly listed test energies. Explain
+  the reference sampling-set totals (642/583/84) and distinguish those sets
+  from individual draws and from bins of interaction outcomes.
+- Clarify that the 13 heads train one at a time for at most 400 epochs for
+  grouped targets or 20 for per-event pair-direction targets; select the
+  weights with lowest validation cross-entropy and stop early when appropriate.
+- Call the comparison input **primary photon histories per selected energy per
+  method** (MC1, MC2 and Beam Weaver).
+- Shorten automatic output directories to `<command>-YYYYMMDD-vN`, where N is
+  the next available sequence number for that command and UTC date. Explicit
+  output directories and resumed training runs retain their existing meanings;
+  command audit records also receive dated sequence names.
+- Expand the README with the factorized law, training and data provenance,
+  method limitations and disclosure of AI-assisted code and writing. Update
+  material-table and architecture documentation.
+- Revise the presentation and provenance descriptions of the **existing**
+  five-energy results gallery and omit panels without saved source data. These
+  figures are not newly simulated v0.4.1 benchmark results; no trained policy
+  or clinical validation is introduced by this release.
+
+The [v0.4.0 archive DOI](https://doi.org/10.5281/zenodo.22739031) identifies
+that archived version. No v0.4.1-specific DOI is asserted here.
+
 # Changes in 0.4.0
 
 The current application learns thirteen disjoint stochastic heads from Monte
