@@ -171,10 +171,10 @@ def _parser():
                                f"for factors, {DEFAULT_REFERENCE_VALIDATION_SAMPLES} for --reference)")
     validate.add_argument("--no-figures", action="store_true")
 
-    report = commands.add_parser("report", help="rebuild figures from a saved comparison")
+    report = commands.add_parser("report", help="build figures and a summary table from a saved comparison")
     report.add_argument("run_dir", help="directory containing comparison.json and dose arrays")
     report.add_argument("--output", metavar="DIRECTORY",
-                        help="figure directory (default: <run_dir>/figures)")
+                        help="figure and table directory (default: <run_dir>/figures)")
     return parser
 
 
@@ -298,9 +298,12 @@ def _explain_operation(command):
             "angular samplers against their specified analytical targets and "
             "requires no learned policy."),
         "report": (
-            "Regenerate figures from the saved comparison summary and dose "
-            "arrays. The simulation data are read from the selected run; "
-            "this command does not repeat any photon histories."),
+            "Generate depth profiles, interaction fractions, timing figures and "
+            "a CSV summary table from the selected comparison. When its saved "
+            "interaction histograms are available, also plot Rayleigh and Compton "
+            "photon angles, photoelectron angles and shells, and pair kinetic "
+            "energy sharing. Older comparison runs lack those histograms, so their "
+            "angular and pair figures cannot be reconstructed. No histories are rerun."),
     }
     print("\n" + textwrap.fill(
         explanations[command], width=79,
@@ -316,7 +319,7 @@ def _execute(args):
         _required_file(run_dir / "comparison.json", "Comparison report")
         output = Path(args.output).expanduser().resolve() if args.output else None
         from .reporting import regenerate_reports
-        print(f"  [report] rebuilding figures from {run_dir}; "
+        print(f"  [report] building figures and summary table from {run_dir}; "
               f"saving to {output or run_dir / 'figures'}.", flush=True)
         regenerate_reports(run_dir, save_dir=output)
         return output or run_dir / "figures"
@@ -496,7 +499,7 @@ def interactive_menu():
               "  3  Run an audited shower\n"
               "  4  Compare MC1, MC2 and BeamWeaver\n"
               "  5  Validate factors or reference samplers\n"
-              "  6  Generate figures from a saved comparison\n"
+              "  6  Generate comparison figures and table\n"
               "  7  Exit")
         try:
             choice = _ask("Select option", "7")
@@ -515,7 +518,7 @@ def interactive_menu():
                     print("  Enter a comparison run directory containing comparison.json.")
                     continue
                 argv.append(comparison)
-                figures = _ask("Figure directory (blank = comparison run/figures)")
+                figures = _ask("Figures and table directory (blank = comparison run/figures)")
                 if figures:
                     argv.extend(["--output", figures])
             elif command == "train":
