@@ -258,7 +258,6 @@ At each incident energy the generator prepares nine reference sampling sets: one
 
 Each complete set is a batch of Beam Spinner draws with fixed energy, stochastic quantity and, where applicable, shell. 
 
-The full grids therefore have 69 × 9 + 21 = 642 training sets, 63 × 9 + 16 = 583 validation sets, and 9 × 9 + 3 = 84 test sets. The reduced `--smoke` grids have different totals.
 
 Default samples per set are:
 
@@ -268,7 +267,7 @@ Default samples per set are:
 | `--continuous-events` | 8,192 | Rayleigh and Compton at each photon energy; photoelectric sampling at each photon energy **and shell** |
 | `--pair-events` | 16,384 | Pair production at each photon energy above threshold |
 
-`--smoke` reduces the grids and counts for execution checks. Low statistics can leave representation checks unevaluable, therefore a smoke dataset is not sufficient evidence of physical accuracy.
+The full grids therefore have 69 × 9 + 21 = 642 training sets, 63 × 9 + 16 = 583 validation sets, and 9 × 9 + 3 = 84 test sets. The reduced `--smoke` grids have different totals - every eighth value from each full energy list, so the actual energy grids are 13, 8, and 2 for training, validation and testing, respectively. `--smoke` also reduces the number of Monte Carlo (Beam Spinner) samples per set from 32,768 to 2,048 each; Rayleigh, Compton, and each photoelectric shell drop from 8,192 to 512; pair production drops from 16,384 to 512. The resulting set counts are 13 × 9 + 7 = 124 for training, 8 × 9 + 2 = 74 for validation, and 2 × 9 + 1 = 19 for test.
 
 Generation writes `schema_v4_data.npz`, its manifest and `schema_v4_generator_spec.json`. The NPZ contains samples, category counts, bin edges and metadata. The manifest records the actual generated data; the generator specification describes canonical rules and defaults. Reuse the NPZ across training sessions.
 
