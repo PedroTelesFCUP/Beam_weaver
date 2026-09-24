@@ -218,7 +218,7 @@ The six water CSV tables are included in the repository root. Commands below use
 
 Generation and validation require the first five files. A learned shower requires the first four plus stopping powers; comparison requires all six. Training reads the generated dataset and does not need the CSV tables. Synthetic tables under `tests` are regression fixtures, not water reference data. See [water-table provenance and conventions](docs/water-data.md).
 
-## Generate and train
+## Generation of Monte-Carlo samples, training, validation, and comparison
 
 Commands support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create the next available `runs/<command>-YYYYMMDD-vN` directory (UTC date, sequential run number). Dataset and checkpoint basenames are unchanged; command audit records also use a dated `command-YYYYMMDD-vN.json` name.
 
@@ -227,15 +227,15 @@ python -m beamweaver generate --data-dir . --output runs/data
 python -m beamweaver train runs/data/schema_v4_data.npz --output runs/training
 ```
 
-### What the generator samples
+### Beam Spinner sampling
 
-Beam Spinner generates reference interactions at **fixed incident photon energies**: the energy of the photon immediately before the interaction being sampled. The default grids are:
+Beam Spinner generates reference interactions at fixed incident photon energies: the energy of the photon immediately before the interaction being sampled. The default grids are:
 
 | Dataset split | Incident photon energy values (MeV) | Number of values |
 | --- | --- | ---: |
-| Training | 64 geometrically spaced values from 0.001 to 10, plus **1.023, 1.030, 1.050, 1.075 and 1.100** near the pair-production threshold | 69 |
+| Training | 64 geometrically spaced values from 0.001 to 10, plus 1.023, 1.030, 1.050, 1.075 and 1.100 near the pair-production threshold | 69 |
 | Validation | Geometric midpoints between neighboring values of the original 64-point grid | 63 |
-| Test | **0.010, 0.020, 0.050, 0.100, 0.5, 1, 2, 5 and 10** | 9 |
+| Test | 0.010, 0.020, 0.050, 0.100, 0.5, 1, 2, 5 and 10 | 9 |
 
 The 64 geometrically spaced training values, rounded here to six decimal places, are:
 
@@ -246,9 +246,13 @@ The 64 geometrically spaced training values, rounded here to six decimal places,
 | 33–48 | 0.107584, 0.124520, 0.144122, 0.166810, 0.193070, 0.223463, 0.258642, 0.299358, 0.346483, 0.401028, 0.464159, 0.537228, 0.621800, 0.719686, 0.832981, 0.964111 |
 | 49–64 | 1.115884, 1.291550, 1.494869, 1.730196, 2.002568, 2.317818, 2.682696, 3.105013, 3.593814, 4.159562, 4.814372, 5.572265, 6.449467, 7.464760, 8.639884, 10.000000 |
 
-The heads receive photon energy as a continuous logarithmically scaled input within 0.001–10 MeV. Separately, the generator derives bin boundaries for continuous interaction outcomes, such as scattering angles and energy fractions, using training samples. The validation samples check that representation before training. Test samples are generated separately, but 10 MeV is a training-grid endpoint and 0.100 MeV coincides with a validation midpoint. The test grid is therefore not compriesed of exclusively unseen energies.
+The heads receive photon energy as a continuous logarithmically scaled input within 0.001–10 MeV. Separately, bin boundaries for continuous interaction outcomes, such as scattering angles and energy fractions, using training samples are generated. The validation samples check that representation before training. Test samples are generated separately, with 10 MeV as a training-grid endpoint and 0.100 MeV as a validation midpoint. The test grid is therefore not comprised exclusively of unseen energies.
 
-At each incident energy the generator prepares nine reference sampling sets: one each for interaction choice, shell choice, Rayleigh and Compton outcomes, and five photoelectric sets, one per shell. Above the pair threshold it adds one pair-production set. Each set is a batch of reference draws for its fixed energy, stochastic quantity and, where applicable, shell. The full grids therefore have 69 × 9 + 21 = 642 training sets, 63 × 9 + 16 = 583 validation sets, and 9 × 9 + 3 = 84 test sets. The reduced `--smoke` grids have different totals.
+At each incident energy the generator prepares nine reference sampling sets: one for interaction choice, one for shell choice, one for Rayleigh and one for Compton outcomes, and five photoelectric sets, one per shell. Above the pair threshold it adds one pair-production set. 
+
+Each complete set is a batch of Beam Spinner draws with fixed energy, stochastic quantity and, where applicable, shell. 
+
+The full grids therefore have 69 × 9 + 21 = 642 training sets, 63 × 9 + 16 = 583 validation sets, and 9 × 9 + 3 = 84 test sets. The reduced `--smoke` grids have different totals.
 
 Default samples per set are:
 
