@@ -93,7 +93,7 @@ def _parser():
     parser = argparse.ArgumentParser(
         prog="beamweaver",
         description="Beam Weaver: generate data, train, run and validate transport.",
-        epilog="Without a command, opens the six-option interactive menu.")
+        epilog="Without a command, opens the seven-option interactive menu.")
     commands = parser.add_subparsers(dest="command")
 
     def output_options(subparser):
@@ -483,11 +483,12 @@ def _ask(label, default=None):
 
 
 def interactive_menu():
-    """Six operations; every transport action selects its checkpoint directly."""
+    """Seven choices; every transport action selects its checkpoint directly."""
     parser = _parser()
     dataset = "schema_v4_data.npz"
     checkpoint = "v040_policy.pt"
     data_dir = "."
+    last_comparison_run = None
     while True:
         print(f"\nBeam Weaver {BW_VERSION}\n"
               "  1  Generate training/validation/test data\n"
@@ -495,19 +496,29 @@ def interactive_menu():
               "  3  Run an audited shower\n"
               "  4  Compare MC1, MC2 and BeamWeaver\n"
               "  5  Validate factors or reference samplers\n"
-              "  6  Exit")
+              "  6  Generate figures from a saved comparison\n"
+              "  7  Exit")
         try:
-            choice = _ask("Select option", "6")
-            if choice == "6":
+            choice = _ask("Select option", "7")
+            if choice == "7":
                 return 0
-            if choice not in {"1", "2", "3", "4", "5"}:
-                print("  Choose an option from 1 to 6.")
+            if choice not in {"1", "2", "3", "4", "5", "6"}:
+                print("  Choose an option from 1 to 7.")
                 continue
             command = {"1": "generate", "2": "train", "3": "run",
-                       "4": "compare", "5": "validate"}[choice]
+                       "4": "compare", "5": "validate", "6": "report"}[choice]
             _explain_operation(command)
             argv = [command]
-            if command == "train":
+            if command == "report":
+                comparison = _ask("Saved comparison run directory", last_comparison_run)
+                if not comparison:
+                    print("  Enter a comparison run directory containing comparison.json.")
+                    continue
+                argv.append(comparison)
+                figures = _ask("Figure directory (blank = comparison run/figures)")
+                if figures:
+                    argv.extend(["--output", figures])
+            elif command == "train":
                 dataset = _ask("Dataset", dataset)
                 argv.append(dataset)
                 factor = _ask("Head to train (blank = all heads)")
@@ -545,7 +556,7 @@ def interactive_menu():
                                               DEFAULT_REFERENCE_VALIDATION_SAMPLES
                                               if "--reference" in argv
                                               else DEFAULT_FACTOR_VALIDATION_SAMPLES)])
-            if "--resume" not in argv:
+            if command != "report" and "--resume" not in argv:
                 output = _ask("Output run directory (blank = automatic)")
                 if output:
                     argv.extend(["--output", output])
@@ -555,6 +566,8 @@ def interactive_menu():
                 dataset = str(run_dir / "schema_v4_data.npz")
             elif command == "train":
                 checkpoint = str(run_dir / "v040_policy.pt")
+            elif command == "compare":
+                last_comparison_run = str(run_dir)
         except (EOFError, KeyboardInterrupt):
             print("\n  Exiting.")
             return 0
