@@ -220,7 +220,8 @@ We reccommend running Beam Weaver as `python Beamweaver_0.4.1.py`. This will ope
 | 3 | Run an audited shower |
 | 4 | Compare MC1, MC2 and BeamWeaver |
 | 5 | Validate factors or reference samplers |
-| 6 | Exit |
+| 6 | Generate comparison figures and table |
+| 7 | Exit |
 
 Each operation explains its purpose and default sampling or training choices before asking for inputs. Help and the menu can be opened without physics tables or a checkpoint. By default, each operation creates a new directory such as `runs/generate-20260923-v1`; the next run of that operation on the same UTC date uses `v2`, then `v3`. These suffixes count runs **for that day**, not Beam Weaver software versions. An explicit `--output` chooses a directory instead; `--resume` continues the specified training run.
 
@@ -307,7 +308,9 @@ python -m beamweaver report runs/comparison
 
 An audited run saves `dose.npy`, `summary.json`, execution records and, when available, `shower3d.png` showing photon tracks from up to 40 primary histories.
 
-Comparison runs MC1 and MC2 with independent random streams, then Beam Weaver. Defaults are 0.05, 0.5, 1 and 5 MeV, with 2,000 primary photon histories per selected energy per method (MC1, MC2 and Beam Weaver). For four energies this means 4 × 3 × 2,000 = 24,000 primary histories in total. It saves per-simulation energy-deposition arrays and `comparison.json`, including interaction fractions, elapsed time and throughput. `report` creates the comparison figures from those saved outputs.
+Comparison runs MC1 and MC2 with independent random streams, then Beam Weaver. Defaults are 0.05, 0.5, 1 and 5 MeV, with 2,000 primary photon histories per selected energy per method (MC1, MC2 and Beam Weaver). For four energies this means 4 × 3 × 2,000 = 24,000 primary histories in total. It saves per-simulation deposited-energy arrays and `comparison.json`, including interaction fractions, elapsed time, throughput and compact histograms of interaction outcomes. Those histograms cover Rayleigh and Compton photon polar angles, photoelectron polar angles and shell selection, and electron kinetic-energy sharing in pair events. They summarize collisions throughout each recursive shower: the energy label is the **primary** photon energy, while individual collisions occur at varying energies.
+
+Menu option 6, or `python -m beamweaver report <comparison_run>`, reads those saved outputs without rerunning transport. It produces peak-normalized depth profiles (deposited-energy shape, **not dose in Gy**), interaction-fraction and timing figures, a CSV table of per-method results, and the available angular, shell and pair figures. Histogram sample counts appear in the plot legends; rare interactions can give noisy distributions. Older comparison runs saved only the deposited-energy arrays and aggregate summaries, so they support the depth, fraction and timing figures but **cannot reconstruct angles, shells or pair shares** that were never saved. Run a new comparison for those plots.
 
 ```bash
 python -m beamweaver validate runs/training/v040_policy.pt --data-dir .

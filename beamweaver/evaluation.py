@@ -22,6 +22,7 @@ import torch
 from .audit import TransportExecutionLogger, reference_sampler_guard
 from .constants import PROCESS_NAMES
 from .dataset import deterministic_seed
+from .interaction_summaries import summarize_interactions
 from .transport import (run_reference_transport, run_learned_transport,
                         run_learned_transport_batched)
 
@@ -52,7 +53,13 @@ def compare_transport(policy, data, env, energies, n_hist,
            "runtime_physics_constants": runtime_physics_metadata(),
            "rayleigh_hc_keV_angstrom": float(data.HC_KEV_A),
            "energies": energies, "arms": {},
-           "timing_scope": "runner setup, photon and electron transport"}
+           "timing_scope": "runner setup, photon and electron transport",
+           "event_histograms_metadata": {
+               "population": "all recorded photon collisions in recursive showers, including secondary photons",
+               "primary_energy_label": "E in each comparison key is the initial primary photon energy in MeV; individual collisions occur at varying incident energies",
+               "polar_angle_deg": "Rayleigh and Compton scattered photon; photoelectric photoelectron, relative to incident photon direction",
+               "pair_fraction": "electron kinetic energy / (electron + positron kinetic energy) from each recorded pair event",
+           }}
     for E0 in energies:
         row = {}
         for arm in ("MC1", "MC2", "BeamWeaver"):
@@ -86,6 +93,7 @@ def compare_transport(policy, data, env, energies, n_hist,
             np.save(save_dir / dose_file, np.asarray(dose))
             row[arm] = {"seed": seed, "interaction_fractions": frac,
                         "n_interactions": len(names),
+                        "event_histograms": summarize_interactions(inter),
                         "dose_sum": float(np.asarray(dose).sum()),
                         "n_secondaries": len(secs), "wall_s": wall,
                         "hist_per_s": n_hist / max(wall, PERFORMANCE_TIME_FLOOR_S),
