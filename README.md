@@ -224,6 +224,16 @@ We reccommend running Beam Weaver as `python Beamweaver_0.4.1.py`. This will ope
 
 Each operation explains its purpose and default sampling or training choices before asking for inputs. Help and the menu can be opened without physics tables or a checkpoint. By default, each operation creates a new directory such as `runs/generate-20260923-v1`; the next run of that operation on the same UTC date uses `v2`, then `v3`. These suffixes count runs **for that day**, not Beam Weaver software versions. An explicit `--output` chooses a directory instead; `--resume` continues the specified training run.
 
+
+Training, validation, and test sets are made from separately generated Beam Spinner samples. They serve different purposes:
+
+| Set | Purpose |
+| --- | --- |
+| **Training** | Fits the 13 model heads and determines the bins for sampled outcomes. |
+| **Validation** | Checks the binning and selects each head’s best checkpoint using a validation error. It does not update model weights. |
+| **Test** | Reserves separate samples for an assessment after training choices are fixed (sanity check). |
+
+
 Users can either follow the menu which is more convenient, or dirrect commands which support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create the next available `runs/<command>-YYYYMMDD-vN` directory (UTC date, sequential run number). Dataset and checkpoint basenames are unchanged; command audit records also use a dated `command-YYYYMMDD-vN.json` name.
 
 ```bash
