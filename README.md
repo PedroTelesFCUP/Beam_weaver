@@ -220,12 +220,14 @@ Generation and validation require the first five files. A learned shower require
 
 ## Generation of Monte-Carlo samples, training, validation, and comparison
 
-Commands support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create the next available `runs/<command>-YYYYMMDD-vN` directory (UTC date, sequential run number). Dataset and checkpoint basenames are unchanged; command audit records also use a dated `command-YYYYMMDD-vN.json` name.
+Users can either follow the menu which is more convenient, or dirrect commands which support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create the next available `runs/<command>-YYYYMMDD-vN` directory (UTC date, sequential run number). Dataset and checkpoint basenames are unchanged; command audit records also use a dated `command-YYYYMMDD-vN.json` name.
 
 ```bash
 python -m beamweaver generate --data-dir . --output runs/data
 python -m beamweaver train runs/data/schema_v4_data.npz --output runs/training
 ```
+
+The use of the menu is reccommended.
 
 ### Beam Spinner sampling
 
