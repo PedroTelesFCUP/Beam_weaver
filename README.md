@@ -192,16 +192,7 @@ python -m beamweaver
 
 The installed `beamweaver` command and `python Beam_weaver_0_4_0.py` open the same application. The launcher must remain beside the `beamweaver` package when used without installation.
 
-| Option | Operation |
-| --- | --- |
-| 1 | Generate training/validation/test data |
-| 2 | Train all heads or one selected head |
-| 3 | Run an audited shower |
-| 4 | Compare MC1, MC2 and BeamWeaver |
-| 5 | Validate factors or reference samplers |
-| 6 | Exit |
 
-Each operation explains its purpose and default sampling or training choices before asking for inputs. Help and the menu can be opened without physics tables or a checkpoint. By default, each operation creates a new directory such as `runs/generate-20260923-v1`; the next run of that operation on the same UTC date uses `v2`, then `v3`. These suffixes count runs **for that day**, not Beam Weaver software versions. An explicit `--output` chooses a directory instead; `--resume` continues the specified training run.
 
 ## Water data
 
@@ -219,6 +210,19 @@ The six water CSV tables are included in the repository root. Commands below use
 Generation and validation require the first five files. A learned shower requires the first four plus stopping powers; comparison requires all six. Training reads the generated dataset and does not need the CSV tables. Synthetic tables under `tests` are regression fixtures, not water reference data. See [water-table provenance and conventions](docs/water-data.md).
 
 ## Generation of Monte-Carlo samples, training, validation, and comparison
+
+We reccommend running Beam Weaver as `python Beamweaver_0.4.1.py`. This will open the following menu:
+
+| Option | Operation |
+| --- | --- |
+| 1 | Generate training/validation/test data |
+| 2 | Train all heads or one selected head |
+| 3 | Run an audited shower |
+| 4 | Compare MC1, MC2 and BeamWeaver |
+| 5 | Validate factors or reference samplers |
+| 6 | Exit |
+
+Each operation explains its purpose and default sampling or training choices before asking for inputs. Help and the menu can be opened without physics tables or a checkpoint. By default, each operation creates a new directory such as `runs/generate-20260923-v1`; the next run of that operation on the same UTC date uses `v2`, then `v3`. These suffixes count runs **for that day**, not Beam Weaver software versions. An explicit `--output` chooses a directory instead; `--resume` continues the specified training run.
 
 Users can either follow the menu which is more convenient, or dirrect commands which support the same workflow as the menu. Use a new or empty output directory; omit `--output` to create the next available `runs/<command>-YYYYMMDD-vN` directory (UTC date, sequential run number). Dataset and checkpoint basenames are unchanged; command audit records also use a dated `command-YYYYMMDD-vN.json` name.
 
