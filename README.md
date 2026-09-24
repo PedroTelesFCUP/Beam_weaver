@@ -246,11 +246,11 @@ The 64 geometrically spaced training values, rounded here to six decimal places,
 | 33–48 | 0.107584, 0.124520, 0.144122, 0.166810, 0.193070, 0.223463, 0.258642, 0.299358, 0.346483, 0.401028, 0.464159, 0.537228, 0.621800, 0.719686, 0.832981, 0.964111 |
 | 49–64 | 1.115884, 1.291550, 1.494869, 1.730196, 2.002568, 2.317818, 2.682696, 3.105013, 3.593814, 4.159562, 4.814372, 5.572265, 6.449467, 7.464760, 8.639884, 10.000000 |
 
-These are **sampling points**, not bins of incident energy. The heads receive photon energy as a continuous logarithmically scaled input within 0.001–10 MeV. Separately, the generator derives bin boundaries for continuous *interaction outcomes*, such as scattering angles and energy fractions, using training samples. The validation samples check that representation before training. Test samples are generated separately, but **10 MeV** is a training-grid endpoint and **0.100 MeV** coincides with a validation midpoint. The test grid is therefore not exclusively unseen energies.
+The heads receive photon energy as a continuous logarithmically scaled input within 0.001–10 MeV. Separately, the generator derives bin boundaries for continuous interaction outcomes, such as scattering angles and energy fractions, using training samples. The validation samples check that representation before training. Test samples are generated separately, but 10 MeV is a training-grid endpoint and 0.100 MeV coincides with a validation midpoint. The test grid is therefore not compriesed of exclusively unseen energies.
 
-At each incident energy the generator prepares nine **reference sampling sets**: one each for interaction choice, shell choice, Rayleigh and Compton outcomes, and five photoelectric sets, one per shell. Above the pair threshold it adds one pair-production set. Each set is a batch of reference draws for its fixed energy, stochastic quantity and, where applicable, shell. The full grids therefore have **69 × 9 + 21 = 642** training sets, **63 × 9 + 16 = 583** validation sets, and **9 × 9 + 3 = 84** test sets. These totals count sets, not individual interactions or bins. The pair threshold is $2m_ec^2 \approx 1.022$ MeV; only energies with pair sampling support contribute to the last term. The reduced `--smoke` grids have different totals.
+At each incident energy the generator prepares nine reference sampling sets: one each for interaction choice, shell choice, Rayleigh and Compton outcomes, and five photoelectric sets, one per shell. Above the pair threshold it adds one pair-production set. Each set is a batch of reference draws for its fixed energy, stochastic quantity and, where applicable, shell. The full grids therefore have 69 × 9 + 21 = 642 training sets, 63 × 9 + 16 = 583 validation sets, and 9 × 9 + 3 = 84 test sets. The reduced `--smoke` grids have different totals.
 
-Default samples **per set** are:
+Default samples per set are:
 
 | Setting | Default | Count applies separately to |
 | --- | ---: | --- |
@@ -258,11 +258,11 @@ Default samples **per set** are:
 | `--continuous-events` | 8,192 | Rayleigh and Compton at each photon energy; photoelectric sampling at each photon energy **and shell** |
 | `--pair-events` | 16,384 | Pair production at each photon energy above threshold |
 
-These are separate counts, not a combined event total. `--smoke` reduces the grids and counts for execution checks. Low statistics can leave representation checks unevaluable; a smoke dataset is not sufficient evidence of physical accuracy.
+`--smoke` reduces the grids and counts for execution checks. Low statistics can leave representation checks unevaluable, therefore a smoke dataset is not sufficient evidence of physical accuracy.
 
 Generation writes `schema_v4_data.npz`, its manifest and `schema_v4_generator_spec.json`. The NPZ contains samples, category counts, bin edges and metadata. The manifest records the actual generated data; the generator specification describes canonical rules and defaults. Reuse the NPZ across training sessions.
 
-The 13 disjoint heads train one at a time with Adam and cross-entropy. For the default settings, the grouped-distribution heads have **up to 400 epochs**, while the four pair electron/positron direction heads trained from individual events have **up to 20 epochs**. After each epoch, the program evaluates cross-entropy on the separately generated validation samples, stops early if it ceases to improve, and restores the weights with the **lowest validation cross-entropy**. These are upper limits, not a promise that every head runs for that many epochs. A lower validation loss selects a checkpoint; test samples remain separate from that selection.
+The 13 disjoint heads train one at a time with Adam and cross-entropy. For the default settings, the grouped-distribution heads have up to 400 epochs, while the four pair electron/positron direction heads trained from individual events have up to 20 epochs. After each epoch, the program evaluates cross-entropy on the separately generated validation samples, stops early if it ceases to improve, and restores the weights with the lowest validation cross-entropy, to avoid overfitting. 
 
 All-head training saves individual `v040_head_*.pt` checkpoints, a training manifest and the combined `v040_policy.pt`. Resume a matching dataset/run pair to restore completed heads and train those remaining:
 
@@ -288,7 +288,7 @@ python -m beamweaver report runs/comparison
 
 An audited run saves `dose.npy`, `summary.json`, execution records and, when available, `shower3d.png` showing photon tracks from up to 40 primary histories.
 
-Comparison runs **MC1 and MC2 with independent random streams**, then Beam Weaver. Defaults are 0.05, 0.5, 1 and 5 MeV, with **2,000 primary photon histories per selected energy per method** (MC1, MC2 and Beam Weaver). For four energies this means 4 × 3 × 2,000 = 24,000 primary histories in total. It saves per-simulation energy-deposition arrays and `comparison.json`, including interaction fractions, elapsed time and throughput. `report` creates the comparison figures from those saved outputs.
+Comparison runs MC1 and MC2 with independent random streams, then Beam Weaver. Defaults are 0.05, 0.5, 1 and 5 MeV, with 2,000 primary photon histories per selected energy per method (MC1, MC2 and Beam Weaver). For four energies this means 4 × 3 × 2,000 = 24,000 primary histories in total. It saves per-simulation energy-deposition arrays and `comparison.json`, including interaction fractions, elapsed time and throughput. `report` creates the comparison figures from those saved outputs.
 
 ```bash
 python -m beamweaver validate runs/training/v040_policy.pt --data-dir .
@@ -300,7 +300,7 @@ The first command compares learned distributions with reference samples; the sec
 
 ## Citation, history and license
 
-The archived **v0.4.0** has its own DOI, **[10.5281/zenodo.22739031](https://doi.org/10.5281/zenodo.22739031)**; that DOI identifies v0.4.0, not v0.4.1. The project’s persistent, all-versions DOI is **[10.5281/zenodo.18994134](https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). The [changelog](CHANGELOG.md) links the preserved earlier releases. A v0.4.1 version-specific archive DOI can be added after that archive exists.
+(https://doi.org/10.5281/zenodo.18994134)**. Cite the specific archived version used and record its Git commit. Citation metadata for the current code is in [CITATION.cff](CITATION.cff); GitHub downloads and release notes are under [Releases](https://github.com/PedroTelesFCUP/Beam_weaver/releases). 
 
 See [architecture](docs/architecture.md) for the module layout and [contributing](contributing.md) for development guidance.
 
